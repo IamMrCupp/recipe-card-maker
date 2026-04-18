@@ -1,0 +1,20 @@
+# Python cruft
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+.env
+
+# Editor / OS cruft
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# If you'd rather treat PDFs as untracked build artifacts, uncomment:
+# *_full.pdf
+# *_4x6.pdf
