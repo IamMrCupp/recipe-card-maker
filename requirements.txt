@@ -1,0 +1,3 @@
+# Runtime dependencies for the recipe build tooling (_tools/).
+# Pinned for reproducible builds — see _tools/_buildmeta.py for PDF date pinning.
+reportlab==4.5.1

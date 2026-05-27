@@ -181,6 +181,19 @@ def build_readme(root: Path) -> str:
     # ---- Usage footer ----
     lines.append("## Working with this repo")
     lines.append("")
+    lines.append(
+        "First-time setup (needs Python 3.14 — see `.python-version`). "
+        "Create a virtualenv and install the pinned dependencies:"
+    )
+    lines.append("")
+    lines.append("```bash")
+    lines.append("python3 -m venv .venv")
+    lines.append("source .venv/bin/activate")
+    lines.append("pip install -r requirements.txt")
+    lines.append("```")
+    lines.append("")
+    lines.append("Then, with the venv active:")
+    lines.append("")
     lines.append("```bash")
     lines.append("# rebuild all PDFs")
     lines.append("make")

@@ -25,6 +25,7 @@ from reportlab.platypus import (
 )
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _buildmeta import ensure_reproducible_pdf_dates  # noqa: E402
 from recipe_parser import Recipe, Section, find_recipes, parse_recipe  # noqa: E402
 
 CARD_SIZE = (4 * inch, 6 * inch)
@@ -292,6 +293,7 @@ def _subtitle_from_meta(meta: dict) -> str | None:
 # --- Build ------------------------------------------------------------------
 
 def build_pdf(recipe: Recipe, out_path: Path) -> None:
+    ensure_reproducible_pdf_dates()
     out_path.parent.mkdir(parents=True, exist_ok=True)
     doc = BaseDocTemplate(
         str(out_path),
