@@ -2,7 +2,7 @@
 
 A personal recipe collection. Markdown is the source of truth; PDFs (full-page letter for kitchen binders, 4×6 for the recipe tin) are generated artifacts.
 
-**2 recipes** across **2 categories** · last built 2026-04-18
+**2 recipes** across **2 categories** · last built 2026-05-26
 
 ## Quick links
 
@@ -26,6 +26,16 @@ A personal recipe collection. Markdown is the source of truth; PDFs (full-page l
 `konditorei` (2) · `strawberry` (1) · `biskuit` (1) · `pastry_cream` (1) · `summer` (1) · `tortenguss` (1) · `marzipan` (1) · `shortbread` (1) · `jam` (1) · `christmas` (1) · `spitzbuben` (1)
 
 ## Working with this repo
+
+First-time setup (needs Python 3.14 — see `.python-version`). Create a virtualenv and install the pinned dependencies:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+Then, with the venv active:
 
 ```bash
 # rebuild all PDFs

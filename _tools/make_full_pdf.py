@@ -21,6 +21,7 @@ from reportlab.platypus import (
 )
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _buildmeta import ensure_reproducible_pdf_dates  # noqa: E402
 from recipe_parser import Recipe, Section, find_recipes, parse_recipe  # noqa: E402
 
 # --- Style kit -------------------------------------------------------------
@@ -190,6 +191,7 @@ def build_story(recipe: Recipe) -> list:
 
 
 def build_pdf(recipe: Recipe, out_path: Path) -> None:
+    ensure_reproducible_pdf_dates()
     out_path.parent.mkdir(parents=True, exist_ok=True)
     doc = SimpleDocTemplate(
         str(out_path),
