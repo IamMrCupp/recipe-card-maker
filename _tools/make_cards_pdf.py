@@ -20,8 +20,13 @@ from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.platypus import (
-    BaseDocTemplate, Frame, HRFlowable, NextPageTemplate, PageBreak,
-    PageTemplate, Paragraph, Spacer,
+    BaseDocTemplate,
+    Frame,
+    HRFlowable,
+    NextPageTemplate,
+    PageTemplate,
+    Paragraph,
+    Spacer,
 )
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -39,50 +44,97 @@ _base = getSampleStyleSheet()
 
 STYLES = {
     "title": ParagraphStyle(
-        "T", parent=_base["Title"], fontName="Times-Bold",
-        fontSize=17, leading=19, textColor=ACCENT,
-        alignment=TA_CENTER, spaceAfter=2,
+        "T",
+        parent=_base["Title"],
+        fontName="Times-Bold",
+        fontSize=17,
+        leading=19,
+        textColor=ACCENT,
+        alignment=TA_CENTER,
+        spaceAfter=2,
     ),
     "subtitle": ParagraphStyle(
-        "ST", parent=_base["Normal"], fontName="Times-Italic",
-        fontSize=9, leading=11, textColor=SOFT,
-        alignment=TA_CENTER, spaceAfter=4,
+        "ST",
+        parent=_base["Normal"],
+        fontName="Times-Italic",
+        fontSize=9,
+        leading=11,
+        textColor=SOFT,
+        alignment=TA_CENTER,
+        spaceAfter=4,
     ),
     "meta": ParagraphStyle(
-        "M", parent=_base["Normal"], fontName="Times-Italic",
-        fontSize=8.5, leading=11, textColor=SOFT,
-        alignment=TA_CENTER, spaceAfter=4,
+        "M",
+        parent=_base["Normal"],
+        fontName="Times-Italic",
+        fontSize=8.5,
+        leading=11,
+        textColor=SOFT,
+        alignment=TA_CENTER,
+        spaceAfter=4,
     ),
     "section": ParagraphStyle(
-        "SEC", parent=_base["Normal"], fontName="Times-Bold",
-        fontSize=11, leading=13, textColor=ACCENT,
-        spaceBefore=5, spaceAfter=3,
+        "SEC",
+        parent=_base["Normal"],
+        fontName="Times-Bold",
+        fontSize=11,
+        leading=13,
+        textColor=ACCENT,
+        spaceBefore=5,
+        spaceAfter=3,
     ),
     "sub": ParagraphStyle(
-        "SUB", parent=_base["Normal"], fontName="Times-Bold",
-        fontSize=9.5, leading=11, textColor=INK,
-        spaceBefore=3, spaceAfter=2,
+        "SUB",
+        parent=_base["Normal"],
+        fontName="Times-Bold",
+        fontSize=9.5,
+        leading=11,
+        textColor=INK,
+        spaceBefore=3,
+        spaceAfter=2,
     ),
     "body": ParagraphStyle(
-        "B", parent=_base["Normal"], fontName="Times-Roman",
-        fontSize=9.5, leading=11.5, textColor=INK,
-        alignment=TA_JUSTIFY, spaceAfter=2,
+        "B",
+        parent=_base["Normal"],
+        fontName="Times-Roman",
+        fontSize=9.5,
+        leading=11.5,
+        textColor=INK,
+        alignment=TA_JUSTIFY,
+        spaceAfter=2,
     ),
     "bullet": ParagraphStyle(
-        "BU", parent=_base["Normal"], fontName="Times-Roman",
-        fontSize=9.5, leading=11.5, textColor=INK,
-        leftIndent=10, firstLineIndent=-8, spaceAfter=1,
+        "BU",
+        parent=_base["Normal"],
+        fontName="Times-Roman",
+        fontSize=9.5,
+        leading=11.5,
+        textColor=INK,
+        leftIndent=10,
+        firstLineIndent=-8,
+        spaceAfter=1,
     ),
     "step": ParagraphStyle(
-        "ST2", parent=_base["Normal"], fontName="Times-Roman",
-        fontSize=9.5, leading=11.5, textColor=INK,
-        alignment=TA_JUSTIFY, leftIndent=14, firstLineIndent=-14,
+        "ST2",
+        parent=_base["Normal"],
+        fontName="Times-Roman",
+        fontSize=9.5,
+        leading=11.5,
+        textColor=INK,
+        alignment=TA_JUSTIFY,
+        leftIndent=14,
+        firstLineIndent=-14,
         spaceAfter=3,
     ),
     "note": ParagraphStyle(
-        "N", parent=_base["Normal"], fontName="Times-Italic",
-        fontSize=9, leading=11, textColor=SOFT,
-        alignment=TA_JUSTIFY, spaceAfter=2,
+        "N",
+        parent=_base["Normal"],
+        fontName="Times-Italic",
+        fontSize=9,
+        leading=11,
+        textColor=SOFT,
+        alignment=TA_JUSTIFY,
+        spaceAfter=2,
     ),
 }
 
@@ -99,12 +151,12 @@ def md_inline(text: str) -> str:
         if tok.startswith("`"):
             return f"<font face='Courier'>{tok[1:-1]}</font>"
         return tok
+
     return _MD_TOKEN_RE.sub(sub, text)
 
 
 def _hr():
-    return HRFlowable(width="100%", thickness=0.5, color=RULE,
-                      spaceBefore=2, spaceAfter=3)
+    return HRFlowable(width="100%", thickness=0.5, color=RULE, spaceBefore=2, spaceAfter=3)
 
 
 _ENTITY_RE = re.compile(r"&nbsp;|&amp;|&lt;|&gt;|&#\d+;|&[a-zA-Z]+;")
@@ -127,8 +179,9 @@ def _meta_line(recipe: Recipe) -> str | None:
     # Prefer explicit timing from the 'Yield and timing' section if present
     yt = recipe.section("Yield and timing")
     if yt and yt.prose:
-        timing_lines = [p.lstrip("-*• ").strip() for p in yt.prose
-                        if p.lstrip().startswith(("-", "*"))]
+        timing_lines = [
+            p.lstrip("-*• ").strip() for p in yt.prose if p.lstrip().startswith(("-", "*"))
+        ]
         timing = next((t for t in timing_lines if "Active" in t), None)
         if timing:
             bits.append(timing)
@@ -154,22 +207,22 @@ def _render_section_flow(section: Section) -> list:
             out.append(Paragraph(f"<b>{sub_name}</b>", STYLES["sub"]))
             if sub_name.lower() in ("method", "assembly", "instructions", "steps"):
                 for i, item in enumerate(items, 1):
-                    out.append(Paragraph(
-                        f"<b>{i}.</b>&nbsp; {md_inline(item)}", STYLES["step"],
-                    ))
+                    out.append(
+                        Paragraph(
+                            f"<b>{i}.</b>&nbsp; {md_inline(item)}",
+                            STYLES["step"],
+                        )
+                    )
             else:
                 for item in items:
-                    out.append(Paragraph(f"•&nbsp;&nbsp;{md_inline(item)}",
-                                         STYLES["bullet"]))
+                    out.append(Paragraph(f"•&nbsp;&nbsp;{md_inline(item)}", STYLES["bullet"]))
     elif section.prose:
         for block in section.prose:
             if block.startswith(("- ", "* ")):
-                out.append(Paragraph(f"•&nbsp;&nbsp;{md_inline(block[2:])}",
-                                     STYLES["bullet"]))
+                out.append(Paragraph(f"•&nbsp;&nbsp;{md_inline(block[2:])}", STYLES["bullet"]))
             elif re.match(r"^\d+\.\s", block):
                 n, _, rest = block.partition(". ")
-                out.append(Paragraph(f"<b>{n}.</b>&nbsp; {md_inline(rest)}",
-                                     STYLES["step"]))
+                out.append(Paragraph(f"<b>{n}.</b>&nbsp; {md_inline(rest)}", STYLES["step"]))
             else:
                 out.append(Paragraph(md_inline(block), STYLES["body"]))
 
@@ -182,6 +235,7 @@ def _split_paragraphs(text: str) -> list[str]:
 
 # --- Page templates with headers ---------------------------------------------
 
+
 def _make_page_templates(recipe: Recipe):
     """Two templates: 'first' has the full title header, 'cont' has a small one."""
     pad_left = 0.2 * inch
@@ -192,20 +246,30 @@ def _make_page_templates(recipe: Recipe):
     # First page: bigger header leaves less room for body
     first_header_h = 1.0 * inch
     first_frame = Frame(
-        pad_left, pad_bottom,
+        pad_left,
+        pad_bottom,
         CARD_SIZE[0] - pad_left - pad_right,
         CARD_SIZE[1] - pad_top - pad_bottom - first_header_h,
-        leftPadding=0, rightPadding=0, topPadding=0, bottomPadding=0,
-        id="first_body", showBoundary=0,
+        leftPadding=0,
+        rightPadding=0,
+        topPadding=0,
+        bottomPadding=0,
+        id="first_body",
+        showBoundary=0,
     )
 
     cont_header_h = 0.4 * inch
     cont_frame = Frame(
-        pad_left, pad_bottom,
+        pad_left,
+        pad_bottom,
         CARD_SIZE[0] - pad_left - pad_right,
         CARD_SIZE[1] - pad_top - pad_bottom - cont_header_h,
-        leftPadding=0, rightPadding=0, topPadding=0, bottomPadding=0,
-        id="cont_body", showBoundary=0,
+        leftPadding=0,
+        rightPadding=0,
+        topPadding=0,
+        bottomPadding=0,
+        id="cont_body",
+        showBoundary=0,
     )
 
     subtitle = _subtitle_from_meta(recipe.meta)
@@ -222,16 +286,16 @@ def _make_page_templates(recipe: Recipe):
         if subtitle:
             canvas.setFont("Times-Italic", 9)
             canvas.setFillColor(SOFT)
-            _draw_centered_wrapped(canvas, subtitle, w / 2,
-                                   y, max_width=w - pad_left - pad_right - 10,
-                                   line_height=11)
+            _draw_centered_wrapped(
+                canvas, subtitle, w / 2, y, max_width=w - pad_left - pad_right - 10, line_height=11
+            )
             y -= 22
         if meta_line:
             canvas.setFont("Times-Italic", 8.5)
             canvas.setFillColor(SOFT)
-            _draw_centered_wrapped(canvas, meta_line, w / 2,
-                                   y, max_width=w - pad_left - pad_right - 10,
-                                   line_height=11)
+            _draw_centered_wrapped(
+                canvas, meta_line, w / 2, y, max_width=w - pad_left - pad_right - 10, line_height=11
+            )
             y -= 14
         # Rule
         canvas.setStrokeColor(RULE)
@@ -244,8 +308,7 @@ def _make_page_templates(recipe: Recipe):
         w, h = CARD_SIZE
         canvas.setFont("Times-Bold", 13)
         canvas.setFillColor(ACCENT)
-        canvas.drawCentredString(w / 2, h - pad_top - 11,
-                                 f"{recipe.title} — continued")
+        canvas.drawCentredString(w / 2, h - pad_top - 11, f"{recipe.title} — continued")
         y = h - pad_top - 11 - 8
         canvas.setStrokeColor(RULE)
         canvas.setLineWidth(0.5)
@@ -253,10 +316,10 @@ def _make_page_templates(recipe: Recipe):
         canvas.restoreState()
 
     return [
-        PageTemplate(id="first", frames=[first_frame], onPage=draw_first_header,
-                     pagesize=CARD_SIZE),
-        PageTemplate(id="cont", frames=[cont_frame], onPage=draw_cont_header,
-                     pagesize=CARD_SIZE),
+        PageTemplate(
+            id="first", frames=[first_frame], onPage=draw_first_header, pagesize=CARD_SIZE
+        ),
+        PageTemplate(id="cont", frames=[cont_frame], onPage=draw_cont_header, pagesize=CARD_SIZE),
     ]
 
 
@@ -292,14 +355,17 @@ def _subtitle_from_meta(meta: dict) -> str | None:
 
 # --- Build ------------------------------------------------------------------
 
+
 def build_pdf(recipe: Recipe, out_path: Path) -> None:
     ensure_reproducible_pdf_dates()
     out_path.parent.mkdir(parents=True, exist_ok=True)
     doc = BaseDocTemplate(
         str(out_path),
         pagesize=CARD_SIZE,
-        leftMargin=0.2 * inch, rightMargin=0.2 * inch,
-        topMargin=0.18 * inch, bottomMargin=0.18 * inch,
+        leftMargin=0.2 * inch,
+        rightMargin=0.2 * inch,
+        topMargin=0.18 * inch,
+        bottomMargin=0.18 * inch,
         title=recipe.title,
         author=recipe.meta.get("source", "Aaron's kitchen"),
     )

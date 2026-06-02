@@ -1,0 +1,5 @@
+# Dev dependencies — lint + test toolchain.
+# Runtime deps come in via -r requirements.txt.
+-r requirements.txt
+ruff==0.15.14
+pytest==9.0.3

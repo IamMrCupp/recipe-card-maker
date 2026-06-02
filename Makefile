@@ -5,13 +5,16 @@
 # `make readme`   -> regenerate README.md only
 # `make clean`    -> remove all generated PDFs
 # `make check`    -> sanity-parse every recipe and report
+# `make lint`     -> ruff check + format-check on _tools/
+# `make test`     -> pytest suite under tests/
 
 PYTHON ?= python3
+RUFF   ?= ruff
 TOOLS  := _tools
 
 RECIPES := $(shell find . -name '*.md' -not -path './_*' -not -name 'README.md')
 
-.PHONY: all pdfs readme clean check new
+.PHONY: all pdfs readme clean check new lint test
 
 all: pdfs readme
 
@@ -33,6 +36,16 @@ clean:
 check:
 	@echo "==> Parsing all recipes"
 	@$(PYTHON) $(TOOLS)/recipe_parser.py .
+
+lint:
+	@echo "==> Ruff lint"
+	@$(RUFF) check .
+	@echo "==> Ruff format check"
+	@$(RUFF) format --check .
+
+test:
+	@echo "==> Pytest"
+	@$(PYTHON) -m pytest -q
 
 # Scaffold a new recipe: `make new NAME=peach_galette CAT=pastries`
 new:
