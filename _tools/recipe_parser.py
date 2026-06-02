@@ -41,8 +41,9 @@ class Section:
     Subsections (###) like 'Ingredients' and 'Method' are captured as
     named block lists in `blocks`. Everything else falls into `prose`.
     """
+
     name: str
-    intro: str = ""                       # text between ## and first ### (or next ##)
+    intro: str = ""  # text between ## and first ### (or next ##)
     blocks: dict[str, list[str]] = field(default_factory=dict)
     prose: list[str] = field(default_factory=list)  # free-form paragraphs when no ### subsections
 
@@ -51,7 +52,7 @@ class Section:
 class Recipe:
     meta: dict[str, Any]
     title: str
-    intro: str                            # paragraphs between # title and first ##
+    intro: str  # paragraphs between # title and first ##
     sections: list[Section]
     source_path: Path
 
@@ -85,7 +86,7 @@ def _parse_frontmatter(text: str) -> tuple[dict[str, Any], str]:
     if not m:
         return {}, text
 
-    body = text[m.end():]
+    body = text[m.end() :]
     meta: dict[str, Any] = {}
     for line in m.group(1).splitlines():
         line = line.rstrip()
@@ -104,7 +105,9 @@ def _parse_frontmatter(text: str) -> tuple[dict[str, Any], str]:
             meta[key] = [item.strip() for item in inner.split(",") if item.strip()] if inner else []
         else:
             # strip surrounding quotes if present
-            if (raw.startswith('"') and raw.endswith('"')) or (raw.startswith("'") and raw.endswith("'")):
+            if (raw.startswith('"') and raw.endswith('"')) or (
+                raw.startswith("'") and raw.endswith("'")
+            ):
                 raw = raw[1:-1]
             meta[key] = raw
     return meta, body
@@ -113,6 +116,7 @@ def _parse_frontmatter(text: str) -> tuple[dict[str, Any], str]:
 # ---------------------------------------------------------------------------
 # Body parsing
 # ---------------------------------------------------------------------------
+
 
 def _strip_bullet(line: str) -> str | None:
     """Return text if line is a '- ' bullet, else None."""
@@ -251,12 +255,14 @@ def parse_recipe(path: Path) -> Recipe:
             end = sec_matches[i + 1].start() if i + 1 < len(sec_matches) else len(after_title)
             sec_body = after_title[start:end].splitlines()
             sec_intro, blocks, prose = _parse_section_body(sec_body)
-            sections.append(Section(
-                name=m.group(1).strip(),
-                intro=sec_intro,
-                blocks=blocks,
-                prose=prose,
-            ))
+            sections.append(
+                Section(
+                    name=m.group(1).strip(),
+                    intro=sec_intro,
+                    blocks=blocks,
+                    prose=prose,
+                )
+            )
 
     return Recipe(
         meta=meta,
@@ -283,6 +289,7 @@ def find_recipes(root: Path) -> list[Path]:
 if __name__ == "__main__":
     # smoke test
     import sys
+
     root = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).resolve().parent.parent
     for rp in find_recipes(root):
         r = parse_recipe(rp)

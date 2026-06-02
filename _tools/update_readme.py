@@ -19,7 +19,6 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from recipe_parser import find_recipes, parse_recipe  # noqa: E402
 
-
 CATEGORY_ORDER = [
     "cookies",
     "cakes",
@@ -172,9 +171,7 @@ def build_readme(root: Path) -> str:
     if tag_counter:
         lines.append("## Tags")
         lines.append("")
-        tag_line = " · ".join(
-            f"`{tag}` ({n})" for tag, n in tag_counter.most_common()
-        )
+        tag_line = " · ".join(f"`{tag}` ({n})" for tag, n in tag_counter.most_common())
         lines.append(tag_line)
         lines.append("")
 

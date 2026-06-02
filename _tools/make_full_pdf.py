@@ -17,7 +17,10 @@ from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.platypus import (
-    HRFlowable, Paragraph, SimpleDocTemplate, Spacer,
+    HRFlowable,
+    Paragraph,
+    SimpleDocTemplate,
+    Spacer,
 )
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -35,50 +38,97 @@ _base = getSampleStyleSheet()
 
 STYLES = {
     "title": ParagraphStyle(
-        "T", parent=_base["Title"], fontName="Times-Bold",
-        fontSize=26, leading=30, textColor=ACCENT,
-        alignment=TA_CENTER, spaceAfter=4,
+        "T",
+        parent=_base["Title"],
+        fontName="Times-Bold",
+        fontSize=26,
+        leading=30,
+        textColor=ACCENT,
+        alignment=TA_CENTER,
+        spaceAfter=4,
     ),
     "subtitle": ParagraphStyle(
-        "ST", parent=_base["Normal"], fontName="Times-Italic",
-        fontSize=12, leading=15, textColor=SOFT,
-        alignment=TA_CENTER, spaceAfter=14,
+        "ST",
+        parent=_base["Normal"],
+        fontName="Times-Italic",
+        fontSize=12,
+        leading=15,
+        textColor=SOFT,
+        alignment=TA_CENTER,
+        spaceAfter=14,
     ),
     "intro": ParagraphStyle(
-        "I", parent=_base["Normal"], fontName="Times-Roman",
-        fontSize=11, leading=15, textColor=INK,
-        alignment=TA_JUSTIFY, spaceAfter=12,
+        "I",
+        parent=_base["Normal"],
+        fontName="Times-Roman",
+        fontSize=11,
+        leading=15,
+        textColor=INK,
+        alignment=TA_JUSTIFY,
+        spaceAfter=12,
     ),
     "h2": ParagraphStyle(
-        "H2", parent=_base["Heading2"], fontName="Times-Bold",
-        fontSize=14, leading=17, textColor=ACCENT,
-        spaceBefore=10, spaceAfter=6,
+        "H2",
+        parent=_base["Heading2"],
+        fontName="Times-Bold",
+        fontSize=14,
+        leading=17,
+        textColor=ACCENT,
+        spaceBefore=10,
+        spaceAfter=6,
     ),
     "h3": ParagraphStyle(
-        "H3", parent=_base["Heading3"], fontName="Times-Bold",
-        fontSize=11.5, leading=14, textColor=INK,
-        spaceBefore=8, spaceAfter=3,
+        "H3",
+        parent=_base["Heading3"],
+        fontName="Times-Bold",
+        fontSize=11.5,
+        leading=14,
+        textColor=INK,
+        spaceBefore=8,
+        spaceAfter=3,
     ),
     "body": ParagraphStyle(
-        "B", parent=_base["Normal"], fontName="Times-Roman",
-        fontSize=10.5, leading=14, textColor=INK,
-        alignment=TA_JUSTIFY, spaceAfter=7,
+        "B",
+        parent=_base["Normal"],
+        fontName="Times-Roman",
+        fontSize=10.5,
+        leading=14,
+        textColor=INK,
+        alignment=TA_JUSTIFY,
+        spaceAfter=7,
     ),
     "bullet": ParagraphStyle(
-        "BU", parent=_base["Normal"], fontName="Times-Roman",
-        fontSize=10.5, leading=14, textColor=INK,
-        leftIndent=16, bulletIndent=4, spaceAfter=2,
+        "BU",
+        parent=_base["Normal"],
+        fontName="Times-Roman",
+        fontSize=10.5,
+        leading=14,
+        textColor=INK,
+        leftIndent=16,
+        bulletIndent=4,
+        spaceAfter=2,
     ),
     "step": ParagraphStyle(
-        "ST2", parent=_base["Normal"], fontName="Times-Roman",
-        fontSize=10.5, leading=14, textColor=INK,
-        alignment=TA_JUSTIFY, leftIndent=20, bulletIndent=4,
+        "ST2",
+        parent=_base["Normal"],
+        fontName="Times-Roman",
+        fontSize=10.5,
+        leading=14,
+        textColor=INK,
+        alignment=TA_JUSTIFY,
+        leftIndent=20,
+        bulletIndent=4,
         spaceAfter=6,
     ),
     "note": ParagraphStyle(
-        "N", parent=_base["Normal"], fontName="Times-Italic",
-        fontSize=10, leading=13, textColor=SOFT,
-        alignment=TA_JUSTIFY, spaceAfter=6,
+        "N",
+        parent=_base["Normal"],
+        fontName="Times-Italic",
+        fontSize=10,
+        leading=13,
+        textColor=SOFT,
+        alignment=TA_JUSTIFY,
+        spaceAfter=6,
     ),
 }
 
@@ -93,9 +143,7 @@ def _rule():
 
 # --- Markdown inline formatting -> ReportLab inline tags -----------------
 
-_MD_TOKEN_RE = re.compile(
-    r"(\*\*[^*]+\*\*|__[^_]+__|\*[^*]+\*|_[^_]+_|`[^`]+`)"
-)
+_MD_TOKEN_RE = re.compile(r"(\*\*[^*]+\*\*|__[^_]+__|\*[^*]+\*|_[^_]+_|`[^`]+`)")
 
 
 def md_inline(text: str) -> str:
@@ -103,6 +151,7 @@ def md_inline(text: str) -> str:
 
     Supports **bold**, __bold__, *italic*, _italic_, `code`.
     """
+
     def sub(m: re.Match[str]) -> str:
         tok = m.group(0)
         if tok.startswith("**") or tok.startswith("__"):
@@ -112,10 +161,12 @@ def md_inline(text: str) -> str:
         if tok.startswith("`"):
             return f"<font face='Courier'>{tok[1:-1]}</font>"
         return tok
+
     return _MD_TOKEN_RE.sub(sub, text)
 
 
 # --- Story builders -------------------------------------------------------
+
 
 def _subtitle_from_meta(meta: dict) -> str | None:
     bits = []
@@ -140,9 +191,12 @@ def _render_section(section: Section) -> list:
             out.append(Paragraph(f"<b>{sub_name}</b>", STYLES["h3"]))
             if sub_name.lower() in ("method", "assembly", "instructions", "steps"):
                 for i, item in enumerate(items, 1):
-                    out.append(Paragraph(
-                        f"<b>{i}.</b> &nbsp; {md_inline(item)}", STYLES["step"],
-                    ))
+                    out.append(
+                        Paragraph(
+                            f"<b>{i}.</b> &nbsp; {md_inline(item)}",
+                            STYLES["step"],
+                        )
+                    )
             else:
                 # bullets (ingredients, notes, variations, etc.)
                 for item in items:
@@ -153,9 +207,12 @@ def _render_section(section: Section) -> list:
                 out.append(Paragraph(f"• {md_inline(block[2:])}", STYLES["bullet"]))
             elif re.match(r"^\d+\.\s", block):
                 n, _, rest = block.partition(". ")
-                out.append(Paragraph(
-                    f"<b>{n}.</b> &nbsp; {md_inline(rest)}", STYLES["step"],
-                ))
+                out.append(
+                    Paragraph(
+                        f"<b>{n}.</b> &nbsp; {md_inline(rest)}",
+                        STYLES["step"],
+                    )
+                )
             else:
                 out.append(Paragraph(md_inline(block), STYLES["body"]))
 

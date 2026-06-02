@@ -1,0 +1,14 @@
+# Ruff config — lint + format for the recipe build tooling under _tools/.
+#
+# `target-version` is the MIN supported Python, not the dev-machine version.
+# The code uses `X | None` (PEP 604, 3.10+) but no 3.11+/3.14+ syntax, so the
+# floor is 3.10. Higher targets cause ruff format to apply Py-version-specific
+# transformations (e.g. py314 strips parens from `except (A, B):` tuples), which
+# breaks portability for no real win on this codebase.
+target-version = "py310"
+line-length = 100
+
+[lint]
+# Pyflakes (F), pycodestyle errors+warnings (E, W), isort (I),
+# flake8-bugbear (B), pyupgrade (UP), comprehensions (C4).
+select = ["E", "F", "W", "I", "B", "UP", "C4"]
