@@ -11,7 +11,6 @@ import re
 import sys
 from pathlib import Path
 
-from reportlab.lib.colors import HexColor
 from reportlab.lib.enums import TA_CENTER, TA_JUSTIFY
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
@@ -25,14 +24,10 @@ from reportlab.platypus import (
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from _buildmeta import ensure_reproducible_pdf_dates  # noqa: E402
+from _styles import ACCENT, INK, RULE, SOFT, md_inline  # noqa: E402
 from recipe_parser import Recipe, Section, find_recipes, parse_recipe  # noqa: E402
 
 # --- Style kit -------------------------------------------------------------
-
-ACCENT = HexColor("#8B2E2E")
-INK = HexColor("#2A2118")
-SOFT = HexColor("#6B5D4F")
-RULE = HexColor("#C9B8A2")
 
 _base = getSampleStyleSheet()
 
@@ -139,30 +134,6 @@ def _rule():
         HRFlowable(width="100%", thickness=0.6, color=RULE),
         Spacer(1, 8),
     ]
-
-
-# --- Markdown inline formatting -> ReportLab inline tags -----------------
-
-_MD_TOKEN_RE = re.compile(r"(\*\*[^*]+\*\*|__[^_]+__|\*[^*]+\*|_[^_]+_|`[^`]+`)")
-
-
-def md_inline(text: str) -> str:
-    """Convert a small subset of inline markdown to ReportLab inline tags.
-
-    Supports **bold**, __bold__, *italic*, _italic_, `code`.
-    """
-
-    def sub(m: re.Match[str]) -> str:
-        tok = m.group(0)
-        if tok.startswith("**") or tok.startswith("__"):
-            return f"<b>{tok[2:-2]}</b>"
-        if tok.startswith("*") or tok.startswith("_"):
-            return f"<i>{tok[1:-1]}</i>"
-        if tok.startswith("`"):
-            return f"<font face='Courier'>{tok[1:-1]}</font>"
-        return tok
-
-    return _MD_TOKEN_RE.sub(sub, text)
 
 
 # --- Story builders -------------------------------------------------------
