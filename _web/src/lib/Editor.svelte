@@ -2,9 +2,16 @@
 	import { goto } from '$app/navigation';
 	import { createRecipe, updateRecipe, deleteRecipe } from '$lib/api';
 
-	// The shared review-and-save surface. Importers (§3.D) will reuse this by
-	// passing a pre-filled `initialMarkdown` draft; hand entry passes a starter.
-	let { mode = 'create', id = null, initialMarkdown = '', initialCategory = '' } = $props();
+	// The shared review-and-save surface. Importers (§3.D) reuse this by passing a
+	// pre-filled `initialMarkdown` draft plus a provenance `source` (website/photo/
+	// social); hand entry passes a starter and the default 'hand' source.
+	let {
+		mode = 'create',
+		id = null,
+		initialMarkdown = '',
+		initialCategory = '',
+		source = 'hand'
+	} = $props();
 
 	let markdown = $state(initialMarkdown);
 	let category = $state(initialCategory);
@@ -17,7 +24,7 @@
 		try {
 			const recipe =
 				mode === 'create'
-					? await createRecipe(markdown, { category: category.trim() || undefined })
+					? await createRecipe(markdown, { category: category.trim() || undefined, source })
 					: await updateRecipe(id, markdown);
 			goto(`/recipes/${recipe.id}`);
 		} catch (e) {

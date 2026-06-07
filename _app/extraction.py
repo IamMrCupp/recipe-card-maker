@@ -70,7 +70,14 @@ class Extractor(Protocol):
     """Raw input -> markdown draft. Implementations raise ExtractionUnavailable
     when they can't reach their backing model."""
 
-    def extract(self, *, text: str | None = None, image: ImageInput | None = None) -> str: ...
+    def extract(
+        self,
+        *,
+        text: str | None = None,
+        image: ImageInput | None = None,
+        source_url: str | None = None,
+        source: str | None = None,
+    ) -> str: ...
 
 
 EXTRACTION_PROMPT = """\
@@ -98,7 +105,14 @@ class ClaudeExtractor:
         # never touch the network.
         self._client = client or _make_client(config)
 
-    def extract(self, *, text: str | None = None, image: ImageInput | None = None) -> str:
+    def extract(
+        self,
+        *,
+        text: str | None = None,
+        image: ImageInput | None = None,
+        source_url: str | None = None,
+        source: str | None = None,
+    ) -> str:
         if text is None and image is None:
             raise ValueError("extract() requires text or image")
 
@@ -133,7 +147,7 @@ class ClaudeExtractor:
         draft = resp.parsed_output
         if draft is None:
             raise ExtractionUnavailable("model returned no structured output")
-        return render_markdown(draft)
+        return render_markdown(draft, source_url=source_url, source=source)
 
 
 def _make_client(config: LLMConfig) -> anthropic.Anthropic:
@@ -182,29 +196,37 @@ _FRONTMATTER_KEYS = (
 
 def _scalar(value: str | None) -> str:
     """Render a scalar frontmatter value for the minimal YAML-ish parser
-    (_tools/recipe_parser._parse_frontmatter). Quote values that would otherwise
-    confuse it (embedded colon, or a leading '[' that reads as a list)."""
+    (_tools/recipe_parser._parse_frontmatter). The parser splits each line on its
+    *first* colon, so a colon inside a value (e.g. a URL) round-trips fine and
+    needs no quoting. The one genuine ambiguity is a leading '[', which would be
+    read as an inline list — quote that."""
     if not value:
         return ""
     text = value.strip()
-    if ":" in text or text.startswith("[") or text.startswith("#"):
+    if text.startswith("["):
         escaped = text.replace('"', '\\"')
         return f'"{escaped}"'
     return text
 
 
-def render_markdown(draft: RecipeDraft) -> str:
+def render_markdown(
+    draft: RecipeDraft,
+    *,
+    source_url: str | None = None,
+    source: str | None = None,
+) -> str:
     """Serialize a `RecipeDraft` into corpus-shaped recipe markdown.
 
     Deterministic and side-effect free — the unit-test anchor for the whole
     service. Empty fields render as blank lines/keys for the human to fill.
+    `source`/`source_url` are the importer's provenance, blank for hand entry.
     """
     values: dict[str, str] = {
         "title": _scalar(draft.title),
         "category": _scalar(draft.category),
         "cuisine": _scalar(draft.cuisine),
-        "source": "",
-        "source_url": "",
+        "source": _scalar(source),
+        "source_url": _scalar(source_url),
         "tags": "[" + ", ".join(draft.tags) + "]",
         "active_time": _scalar(draft.active_time),
         "total_time": _scalar(draft.total_time),

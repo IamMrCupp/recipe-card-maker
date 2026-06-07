@@ -31,6 +31,18 @@ class RecipeUpdate(BaseModel):
     markdown: str
 
 
+class WebsiteImportRequest(BaseModel):
+    """Request body for importing a recipe from a URL (§3.D.2)."""
+
+    url: str
+
+
+class ImportDraft(BaseModel):
+    """An unsaved draft returned by an importer — markdown for the §C editor."""
+
+    markdown: str
+
+
 class SectionOut(BaseModel):
     name: str
     intro: str

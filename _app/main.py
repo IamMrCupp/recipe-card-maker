@@ -33,9 +33,18 @@ from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, Response
 from recipe_parser import Recipe, parse_recipe_text
 
-from _app.schemas import RecipeCreate, RecipeDetail, RecipeSummary, RecipeUpdate
+from _app.schemas import (
+    ImportDraft,
+    RecipeCreate,
+    RecipeDetail,
+    RecipeSummary,
+    RecipeUpdate,
+    WebsiteImportRequest,
+)
 from _app.sqlite_store import SQLiteRecipeStore
 from _app.storage import RecipeStore
+from _app.web_fetch import FetchError, UnsafeURL
+from _app.web_import import ImportUnavailable, import_website
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 WEB_BUILD_DIR = (REPO_ROOT / "_web" / "build").resolve()
@@ -134,7 +143,12 @@ def create_app(store: RecipeStore | None = None, web_build_dir: Path | None = No
     def create_recipe(store: StoreDep, body: RecipeCreate):
         recipe = _validated_recipe(body.markdown)
         rel_path = _derive_rel_path(recipe, body.category)
-        stored = store.create(body.markdown, source=body.source, rel_path=rel_path)
+        # Provenance URL is canonical in the markdown frontmatter (importers write
+        # it there); surface it onto the queryable DB column at create time.
+        source_url = recipe.meta.get("source_url") or None
+        stored = store.create(
+            body.markdown, source=body.source, rel_path=rel_path, source_url=source_url
+        )
         return RecipeDetail.from_stored(stored)
 
     @api.put("/recipes/{recipe_id}", response_model=RecipeDetail)
@@ -149,6 +163,21 @@ def create_app(store: RecipeStore | None = None, web_build_dir: Path | None = No
     def delete_recipe(store: StoreDep, recipe_id: str):
         if not store.delete(recipe_id):
             raise HTTPException(status_code=404, detail="recipe not found")
+
+    @api.post("/import/website", response_model=ImportDraft)
+    def import_from_website(body: WebsiteImportRequest):
+        """Turn a URL into an unsaved markdown draft. Structural parse first,
+        LLM fallback second — see _app/web_import. Nothing is persisted."""
+        if not body.url.strip():
+            raise HTTPException(status_code=422, detail="url is empty")
+        try:
+            return ImportDraft(markdown=import_website(body.url))
+        except UnsafeURL as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        except FetchError as exc:
+            raise HTTPException(status_code=502, detail=str(exc)) from exc
+        except ImportUnavailable as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     @api.get("/recipes/{recipe_id}/card.pdf")
     def recipe_card_pdf(store: StoreDep, recipe_id: str):
