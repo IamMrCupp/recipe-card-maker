@@ -39,6 +39,7 @@ class RecipeRow(Base):
     source: Mapped[str] = mapped_column(String(16))
     source_url: Mapped[str | None] = mapped_column(String, nullable=True)
     images: Mapped[str] = mapped_column(Text, default="[]")  # JSON array
+    rel_path: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
     # denormalized-from-markdown, for querying:
     title: Mapped[str] = mapped_column(String, default="", index=True)
     category: Mapped[str | None] = mapped_column(String, nullable=True, index=True)
@@ -59,6 +60,7 @@ def _to_stored(row: RecipeRow) -> StoredRecipe:
         source=Provenance(row.source),
         source_url=row.source_url,
         images=json.loads(row.images),
+        rel_path=row.rel_path,
         created_at=_as_utc(row.created_at),
         updated_at=_as_utc(row.updated_at),
     )
@@ -83,6 +85,7 @@ class SQLiteRecipeStore(RecipeStore):
         source: Provenance,
         source_url: str | None = None,
         images: list[str] | None = None,
+        rel_path: str | None = None,
     ) -> StoredRecipe:
         now = datetime.now(UTC)
         row = RecipeRow(
@@ -91,6 +94,7 @@ class SQLiteRecipeStore(RecipeStore):
             source=source.value,
             source_url=source_url,
             images=json.dumps(images or []),
+            rel_path=rel_path,
             created_at=now,
             updated_at=now,
         )
@@ -107,6 +111,7 @@ class SQLiteRecipeStore(RecipeStore):
         markdown: str | None = None,
         source_url: str | None = None,
         images: list[str] | None = None,
+        rel_path: str | None = None,
     ) -> StoredRecipe | None:
         with Session(self.engine) as session:
             row = session.get(RecipeRow, recipe_id)
@@ -119,6 +124,8 @@ class SQLiteRecipeStore(RecipeStore):
                 row.source_url = source_url
             if images is not None:
                 row.images = json.dumps(images)
+            if rel_path is not None:
+                row.rel_path = rel_path
             row.updated_at = datetime.now(UTC)
             session.commit()
             return _to_stored(row)

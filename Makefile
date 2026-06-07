@@ -8,6 +8,8 @@
 # `make lint`     -> ruff check + format-check on _tools/
 # `make test`     -> pytest suite under tests/
 # `make serve`    -> run the app backend (FastAPI) with auto-reload
+# `make import-corpus` -> load the markdown corpus into the app's DB store
+# `make export-corpus` -> write the DB store back to markdown + rebuild PDFs/README
 
 PYTHON ?= python3
 RUFF   ?= ruff
@@ -17,7 +19,7 @@ PORT   ?= 8000
 
 RECIPES := $(shell find . -name '*.md' -not -path './_*' -not -name 'README.md')
 
-.PHONY: all pdfs readme clean check new lint test serve
+.PHONY: all pdfs readme clean check new lint test serve import-corpus export-corpus
 
 all: pdfs readme
 
@@ -53,6 +55,14 @@ test:
 serve:
 	@echo "==> Starting app backend on http://$(HOST):$(PORT) (Ctrl-C to stop)"
 	@$(PYTHON) -m uvicorn _app.main:app --reload --host $(HOST) --port $(PORT)
+
+import-corpus:
+	@echo "==> Importing markdown corpus into the DB store"
+	@$(PYTHON) -m _app.corpus import
+
+export-corpus:
+	@echo "==> Exporting DB store to markdown + rebuilding PDFs/README"
+	@$(PYTHON) -m _app.corpus export
 
 # Scaffold a new recipe: `make new NAME=peach_galette CAT=pastries`
 new:
