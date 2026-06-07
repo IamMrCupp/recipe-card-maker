@@ -274,11 +274,15 @@ def parse_recipe(path: Path) -> Recipe:
 
 
 def find_recipes(root: Path) -> list[Path]:
-    """Walk the recipe tree and return all recipe .md files (skipping _-prefixed dirs)."""
+    """Walk the recipe tree and return all recipe .md files.
+
+    Skips any path component starting with ``_`` (build machinery: _tools/,
+    _templates/, _app/) or ``.`` (dotdirs: .venv/, .git/, .github/) — no recipe
+    lives there — and the generated README.md.
+    """
     out: list[Path] = []
     for p in sorted(root.rglob("*.md")):
-        # Skip anything inside a leading-underscore directory (templates, tools, etc.)
-        if any(part.startswith("_") for part in p.relative_to(root).parts):
+        if any(part.startswith(("_", ".")) for part in p.relative_to(root).parts):
             continue
         if p.name == "README.md":
             continue

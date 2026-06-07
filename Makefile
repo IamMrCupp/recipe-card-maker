@@ -7,14 +7,17 @@
 # `make check`    -> sanity-parse every recipe and report
 # `make lint`     -> ruff check + format-check on _tools/
 # `make test`     -> pytest suite under tests/
+# `make serve`    -> run the app backend (FastAPI) with auto-reload
 
 PYTHON ?= python3
 RUFF   ?= ruff
 TOOLS  := _tools
+HOST   ?= 127.0.0.1
+PORT   ?= 8000
 
 RECIPES := $(shell find . -name '*.md' -not -path './_*' -not -name 'README.md')
 
-.PHONY: all pdfs readme clean check new lint test
+.PHONY: all pdfs readme clean check new lint test serve
 
 all: pdfs readme
 
@@ -46,6 +49,10 @@ lint:
 test:
 	@echo "==> Pytest"
 	@$(PYTHON) -m pytest -q
+
+serve:
+	@echo "==> Starting app backend on http://$(HOST):$(PORT) (Ctrl-C to stop)"
+	@$(PYTHON) -m uvicorn _app.main:app --reload --host $(HOST) --port $(PORT)
 
 # Scaffold a new recipe: `make new NAME=peach_galette CAT=pastries`
 new:

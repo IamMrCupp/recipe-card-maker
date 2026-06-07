@@ -1,5 +1,7 @@
 # Dev dependencies — lint + test toolchain.
-# Runtime deps come in via -r requirements.txt.
--r requirements.txt
+# Pulls in the app runtime (which itself pulls in the build-tooling runtime),
+# so a dev/CI environment can lint and test everything in one install.
+-r requirements-app.txt
 ruff==0.15.14
 pytest==9.0.3
+httpx==0.28.1  # required by fastapi's TestClient
