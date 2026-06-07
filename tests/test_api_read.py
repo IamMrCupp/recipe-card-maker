@@ -46,7 +46,7 @@ def client(tmp_path):
 
 
 def test_list_returns_summaries_ordered_by_title(client):
-    resp = client.get("/recipes")
+    resp = client.get("/api/recipes")
     assert resp.status_code == 200
     data = resp.json()
     assert [r["title"] for r in data] == ["Erdbeertorte", "Sun and Moon Cookies"]
@@ -59,29 +59,31 @@ def test_list_returns_summaries_ordered_by_title(client):
     assert "markdown" not in first and "sections" not in first
 
 
+def _titles(client, path):
+    return [r["title"] for r in client.get(path).json()]
+
+
 def test_list_filters_by_category_and_tag(client):
-    assert [r["title"] for r in client.get("/recipes?category=cakes").json()] == ["Erdbeertorte"]
-    assert [r["title"] for r in client.get("/recipes?tag=marzipan").json()] == [
-        "Sun and Moon Cookies"
-    ]
-    assert client.get("/recipes?category=nope").json() == []
+    assert _titles(client, "/api/recipes?category=cakes") == ["Erdbeertorte"]
+    assert _titles(client, "/api/recipes?tag=marzipan") == ["Sun and Moon Cookies"]
+    assert client.get("/api/recipes?category=nope").json() == []
 
 
 def test_search_matches_title_and_body(client):
-    assert [r["title"] for r in client.get("/search?q=strawberry").json()] == ["Erdbeertorte"]
-    assert [r["title"] for r in client.get("/search?q=cookies").json()] == ["Sun and Moon Cookies"]
-    assert client.get("/search?q=zzz").json() == []
+    assert _titles(client, "/api/search?q=strawberry") == ["Erdbeertorte"]
+    assert _titles(client, "/api/search?q=cookies") == ["Sun and Moon Cookies"]
+    assert client.get("/api/search?q=zzz").json() == []
 
 
 def test_search_requires_q(client):
-    assert client.get("/search").status_code == 422  # missing required query param
+    assert client.get("/api/search").status_code == 422  # missing required query param
 
 
 def test_get_returns_detail_with_structure(client):
-    list_resp = client.get("/recipes?category=cakes").json()
+    list_resp = client.get("/api/recipes?category=cakes").json()
     recipe_id = list_resp[0]["id"]
 
-    resp = client.get(f"/recipes/{recipe_id}")
+    resp = client.get(f"/api/recipes/{recipe_id}")
     assert resp.status_code == 200
     detail = resp.json()
     assert detail["title"] == "Erdbeertorte"
@@ -91,7 +93,7 @@ def test_get_returns_detail_with_structure(client):
 
 
 def test_get_unknown_id_404(client):
-    resp = client.get("/recipes/does-not-exist")
+    resp = client.get("/api/recipes/does-not-exist")
     assert resp.status_code == 404
     assert resp.json()["detail"] == "recipe not found"
 
