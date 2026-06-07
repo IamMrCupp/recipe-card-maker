@@ -31,9 +31,9 @@ import make_cards_pdf
 import make_full_pdf
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, Response
-from recipe_parser import Recipe
+from recipe_parser import Recipe, parse_recipe_text
 
-from _app.schemas import RecipeDetail, RecipeSummary
+from _app.schemas import RecipeCreate, RecipeDetail, RecipeSummary, RecipeUpdate
 from _app.sqlite_store import SQLiteRecipeStore
 from _app.storage import RecipeStore
 
@@ -54,6 +54,29 @@ def get_store(request: Request) -> RecipeStore:
 
 
 StoreDep = Annotated[RecipeStore, Depends(get_store)]
+
+
+def _validated_recipe(markdown: str) -> Recipe:
+    """Parse and sanity-check submitted markdown. 422 if it has no usable title."""
+    if not markdown.strip():
+        raise HTTPException(status_code=422, detail="markdown is empty")
+    recipe = parse_recipe_text(markdown)
+    has_title = bool(recipe.meta.get("title")) or recipe.title != "untitled"
+    if not has_title:
+        raise HTTPException(
+            status_code=422,
+            detail="recipe needs a title (a frontmatter `title:` or an `# H1` heading)",
+        )
+    return recipe
+
+
+def _derive_rel_path(recipe: Recipe, category_override: str | None) -> str | None:
+    """Corpus location for a new recipe: <category>/<slug>.md, or None if uncategorized."""
+    category = category_override
+    if not category:
+        meta_cat = recipe.meta.get("category")
+        category = meta_cat if isinstance(meta_cat, str) and meta_cat else None
+    return f"{category}/{recipe.slug}.md" if category else None
 
 
 def _build_pdf_response(
@@ -106,6 +129,26 @@ def create_app(store: RecipeStore | None = None, web_build_dir: Path | None = No
         if stored is None:
             raise HTTPException(status_code=404, detail="recipe not found")
         return RecipeDetail.from_stored(stored)
+
+    @api.post("/recipes", response_model=RecipeDetail, status_code=201)
+    def create_recipe(store: StoreDep, body: RecipeCreate):
+        recipe = _validated_recipe(body.markdown)
+        rel_path = _derive_rel_path(recipe, body.category)
+        stored = store.create(body.markdown, source=body.source, rel_path=rel_path)
+        return RecipeDetail.from_stored(stored)
+
+    @api.put("/recipes/{recipe_id}", response_model=RecipeDetail)
+    def update_recipe(store: StoreDep, recipe_id: str, body: RecipeUpdate):
+        _validated_recipe(body.markdown)
+        updated = store.update(recipe_id, markdown=body.markdown)
+        if updated is None:
+            raise HTTPException(status_code=404, detail="recipe not found")
+        return RecipeDetail.from_stored(updated)
+
+    @api.delete("/recipes/{recipe_id}", status_code=204)
+    def delete_recipe(store: StoreDep, recipe_id: str):
+        if not store.delete(recipe_id):
+            raise HTTPException(status_code=404, detail="recipe not found")
 
     @api.get("/recipes/{recipe_id}/card.pdf")
     def recipe_card_pdf(store: StoreDep, recipe_id: str):

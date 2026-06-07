@@ -11,7 +11,24 @@ from datetime import datetime
 
 from pydantic import BaseModel
 
-from _app.storage import StoredRecipe
+from _app.storage import Provenance, StoredRecipe
+
+
+class RecipeCreate(BaseModel):
+    """Request body for creating a recipe. Content is canonical markdown."""
+
+    markdown: str
+    source: Provenance = Provenance.HAND
+    # Optional corpus category (folder). If omitted, falls back to the frontmatter
+    # `category`; if neither is present the recipe lives in the DB without a file
+    # location until one is assigned.
+    category: str | None = None
+
+
+class RecipeUpdate(BaseModel):
+    """Request body for updating a recipe's content."""
+
+    markdown: str
 
 
 class SectionOut(BaseModel):
