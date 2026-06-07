@@ -47,6 +47,7 @@
 			<a href={`/api/recipes/${recipe.id}/letter.pdf`} target="_blank" rel="noopener">
 				⬇ Letter page
 			</a>
+			<a class="edit" href={`/recipes/${recipe.id}/edit`}>✎ Edit</a>
 		</div>
 
 		{#if recipe.intro}<p class="intro">{recipe.intro}</p>{/if}
