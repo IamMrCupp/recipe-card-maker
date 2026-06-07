@@ -1,6 +1,7 @@
 <script>
 	import { page } from '$app/state';
 	import { getRecipe } from '$lib/api';
+	import { renderInline } from '$lib/inline';
 
 	let recipe = $state(null);
 	let loading = $state(true);
@@ -50,19 +51,19 @@
 			<a class="edit" href={`/recipes/${recipe.id}/edit`}>✎ Edit</a>
 		</div>
 
-		{#if recipe.intro}<p class="intro">{recipe.intro}</p>{/if}
+		{#if recipe.intro}<p class="intro">{@html renderInline(recipe.intro)}</p>{/if}
 
 		{#each recipe.sections as section (section.name)}
 			<section>
 				<h2>{section.name}</h2>
-				{#if section.intro}<p>{section.intro}</p>{/if}
+				{#if section.intro}<p>{@html renderInline(section.intro)}</p>{/if}
 				{#each Object.entries(section.blocks) as [name, items] (name)}
 					<h3>{name}</h3>
 					<ul>
-						{#each items as item}<li>{item}</li>{/each}
+						{#each items as item}<li>{@html renderInline(item)}</li>{/each}
 					</ul>
 				{/each}
-				{#each section.prose as para}<p>{para}</p>{/each}
+				{#each section.prose as para}<p>{@html renderInline(para)}</p>{/each}
 			</section>
 		{/each}
 	</article>
@@ -102,6 +103,14 @@
 	.intro {
 		font-style: italic;
 		color: #5b5048;
+	}
+	/* inline-markdown output from renderInline() (via {@html}) needs :global */
+	article :global(code) {
+		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+		font-size: 0.9em;
+		background: #f1e9e2;
+		padding: 0.05rem 0.3rem;
+		border-radius: 4px;
 	}
 	h2 {
 		border-bottom: 1px solid #ece4dd;
