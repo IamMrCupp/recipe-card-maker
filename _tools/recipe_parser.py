@@ -54,11 +54,14 @@ class Recipe:
     title: str
     intro: str  # paragraphs between # title and first ##
     sections: list[Section]
-    source_path: Path
+    source_path: Path | None  # None for recipes parsed from in-memory text (e.g. the DB)
 
     @property
     def slug(self) -> str:
-        return self.source_path.stem
+        if self.source_path is not None:
+            return self.source_path.stem
+        # Path-less recipe (DB-origin): derive a slug from the title.
+        return re.sub(r"[^a-z0-9]+", "_", self.title.lower()).strip("_") or "untitled"
 
     def section(self, name: str) -> Section | None:
         """Case-insensitive lookup of a section by name."""
@@ -229,8 +232,14 @@ def _parse_section_body(body_lines: list[str]) -> tuple[str, dict[str, list[str]
     return intro, blocks, prose
 
 
-def parse_recipe(path: Path) -> Recipe:
-    text = path.read_text(encoding="utf-8")
+def parse_recipe_text(text: str, source_path: Path | None = None) -> Recipe:
+    """Parse recipe markdown from an in-memory string.
+
+    The structural authority for both files and DB-stored content: `parse_recipe`
+    reads a file and delegates here, and the app's storage layer parses the
+    markdown it persists the same way. `source_path` is carried onto the Recipe
+    for file-origin recipes and left None for DB-origin ones.
+    """
     meta, body = _parse_frontmatter(text)
 
     # Find the H1 title and split on H2 sections
@@ -238,7 +247,8 @@ def parse_recipe(path: Path) -> Recipe:
     h2_re = re.compile(r"^##\s+(.+?)\s*$", re.MULTILINE)
 
     title_m = title_re.search(body)
-    title = title_m.group(1).strip() if title_m else meta.get("title", path.stem)
+    fallback_title = meta.get("title") or (source_path.stem if source_path else "untitled")
+    title = title_m.group(1).strip() if title_m else fallback_title
     after_title_start = title_m.end() if title_m else 0
     after_title = body[after_title_start:]
 
@@ -269,8 +279,13 @@ def parse_recipe(path: Path) -> Recipe:
         title=title,
         intro=intro_text,
         sections=sections,
-        source_path=path,
+        source_path=source_path,
     )
+
+
+def parse_recipe(path: Path) -> Recipe:
+    """Parse a recipe markdown file from disk."""
+    return parse_recipe_text(path.read_text(encoding="utf-8"), source_path=path)
 
 
 def find_recipes(root: Path) -> list[Path]:
