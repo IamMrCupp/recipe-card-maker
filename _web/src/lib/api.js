@@ -67,6 +67,16 @@ export function createRecipe(markdown, opts = {}) {
 }
 
 /**
+ * Import a recipe from a URL (§3.D.2). Returns an unsaved draft `{ markdown }`
+ * for the editor; throws with the server's message on failure.
+ * @param {string} url
+ * @returns {Promise<{ markdown: string }>}
+ */
+export function importWebsite(url) {
+	return send('POST', '/import/website', { url });
+}
+
+/**
  * @param {string} id
  * @param {string} markdown
  */

@@ -100,11 +100,17 @@ def test_render_markdown_empty_draft_is_blank_not_fabricated():
     parse_recipe_text(md)
 
 
-def test_render_markdown_quotes_values_with_colons():
-    md = render_markdown(RecipeDraft(title="Soup: a study", yield_amount="serves 4"))
-    assert 'title: "Soup: a study"' in md
-    # round-trips back to the original (parser strips the quotes)
+def test_render_markdown_colon_values_unquoted_and_roundtrip():
+    # the parser splits on the first colon only, so a colon in the value is safe
+    md = render_markdown(RecipeDraft(title="Soup: a study"))
+    assert "title: Soup: a study" in md
     assert parse_recipe_text(md).title == "Soup: a study"
+
+
+def test_render_markdown_quotes_leading_bracket():
+    # a leading '[' would read as an inline list — must be quoted
+    md = render_markdown(RecipeDraft(yield_amount="[makes 12]"))
+    assert 'yield: "[makes 12]"' in md
 
 
 # --- extraction: text + vision ---------------------------------------------
