@@ -10,8 +10,13 @@
 # `make serve`    -> run the app backend (FastAPI) with auto-reload
 # `make import-corpus` -> load the markdown corpus into the app's DB store
 # `make export-corpus` -> write the DB store back to markdown + rebuild PDFs/README
+# `make web-install` -> install the PWA frontend's npm deps (_web/)
+# `make web-build`   -> build the PWA frontend (FastAPI serves _web/build)
+# `make web-dev`     -> run the SvelteKit dev server (proxies /api to the backend)
 
 PYTHON ?= python3
+NPM    ?= npm
+WEB    := _web
 RUFF   ?= ruff
 TOOLS  := _tools
 HOST   ?= 127.0.0.1
@@ -19,7 +24,8 @@ PORT   ?= 8000
 
 RECIPES := $(shell find . -name '*.md' -not -path './_*' -not -name 'README.md')
 
-.PHONY: all pdfs readme clean check new lint test serve import-corpus export-corpus
+.PHONY: all pdfs readme clean check new lint test serve import-corpus export-corpus \
+        web-install web-build web-dev
 
 all: pdfs readme
 
@@ -63,6 +69,18 @@ import-corpus:
 export-corpus:
 	@echo "==> Exporting DB store to markdown + rebuilding PDFs/README"
 	@$(PYTHON) -m _app.corpus export
+
+web-install:
+	@echo "==> Installing PWA frontend deps ($(WEB)/)"
+	@cd $(WEB) && $(NPM) install
+
+web-build:
+	@echo "==> Building PWA frontend -> $(WEB)/build"
+	@cd $(WEB) && $(NPM) run build
+
+web-dev:
+	@echo "==> Starting SvelteKit dev server (proxies /api to http://$(HOST):$(PORT))"
+	@cd $(WEB) && $(NPM) run dev
 
 # Scaffold a new recipe: `make new NAME=peach_galette CAT=pastries`
 new:
