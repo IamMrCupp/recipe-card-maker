@@ -22,11 +22,16 @@ lives on ``app.state`` — injected for tests, otherwise created lazily.
 from __future__ import annotations
 
 import mimetypes
+import tempfile
+from collections.abc import Callable
 from pathlib import Path
 from typing import Annotated
 
+import make_cards_pdf
+import make_full_pdf
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
+from recipe_parser import Recipe
 
 from _app.schemas import RecipeDetail, RecipeSummary
 from _app.sqlite_store import SQLiteRecipeStore
@@ -49,6 +54,29 @@ def get_store(request: Request) -> RecipeStore:
 
 
 StoreDep = Annotated[RecipeStore, Depends(get_store)]
+
+
+def _build_pdf_response(
+    store: RecipeStore,
+    recipe_id: str,
+    build: Callable[[Recipe, Path], None],
+    suffix: str,
+) -> Response:
+    """Render a recipe to PDF via the existing reportlab builder and stream it back."""
+    stored = store.get(recipe_id)
+    if stored is None:
+        raise HTTPException(status_code=404, detail="recipe not found")
+    recipe = stored.recipe
+    filename = f"{recipe.slug}{suffix}.pdf"
+    with tempfile.TemporaryDirectory() as tmp:
+        out = Path(tmp) / filename
+        build(recipe, out)
+        data = out.read_bytes()
+    return Response(
+        content=data,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'inline; filename="{filename}"'},
+    )
 
 
 def create_app(store: RecipeStore | None = None, web_build_dir: Path | None = None) -> FastAPI:
@@ -78,6 +106,14 @@ def create_app(store: RecipeStore | None = None, web_build_dir: Path | None = No
         if stored is None:
             raise HTTPException(status_code=404, detail="recipe not found")
         return RecipeDetail.from_stored(stored)
+
+    @api.get("/recipes/{recipe_id}/card.pdf")
+    def recipe_card_pdf(store: StoreDep, recipe_id: str):
+        return _build_pdf_response(store, recipe_id, make_cards_pdf.build_pdf, "_4x6")
+
+    @api.get("/recipes/{recipe_id}/letter.pdf")
+    def recipe_letter_pdf(store: StoreDep, recipe_id: str):
+        return _build_pdf_response(store, recipe_id, make_full_pdf.build_pdf, "_full")
 
     app.include_router(api)
     _mount_spa(app, build_dir)

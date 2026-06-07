@@ -39,6 +39,16 @@
 				{#each recipe.tags as t}<span class="tag">{t}</span>{/each}
 			</div>
 		{/if}
+
+		<div class="downloads">
+			<a href={`/api/recipes/${recipe.id}/card.pdf`} target="_blank" rel="noopener">
+				⬇ 4×6 card
+			</a>
+			<a href={`/api/recipes/${recipe.id}/letter.pdf`} target="_blank" rel="noopener">
+				⬇ Letter page
+			</a>
+		</div>
+
 		{#if recipe.intro}<p class="intro">{recipe.intro}</p>{/if}
 
 		{#each recipe.sections as section (section.name)}
@@ -74,6 +84,19 @@
 		color: #6b5347;
 		padding: 0.1rem 0.45rem;
 		border-radius: 999px;
+	}
+	.downloads {
+		display: flex;
+		gap: 0.5rem;
+		margin: 0.75rem 0;
+	}
+	.downloads a {
+		font-size: 0.85rem;
+		text-decoration: none;
+		color: #7a3b2e;
+		border: 1px solid #d8cec6;
+		border-radius: 8px;
+		padding: 0.3rem 0.6rem;
 	}
 	.intro {
 		font-style: italic;
