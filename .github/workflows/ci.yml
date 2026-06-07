@@ -35,3 +35,25 @@ jobs:
 
       - name: Sanity-parse all recipes
         run: make check
+
+  web:
+    name: Build PWA frontend
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: '_web/package-lock.json'
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: _web
+
+      - name: Build
+        run: npm run build
+        working-directory: _web
