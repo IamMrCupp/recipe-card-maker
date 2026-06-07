@@ -6,6 +6,12 @@ __pycache__/
 venv/
 .env
 
+# App data — the SQLite store is a working DB, not source of truth (exported to
+# markdown by §3.A.3). Never commit it.
+_app/var/
+*.db
+*.sqlite3
+
 # Editor / OS cruft
 .vscode/
 .idea/
