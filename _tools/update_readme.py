@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import sys
 from collections import Counter, defaultdict
-from datetime import date
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -129,10 +128,7 @@ def build_readme(root: Path) -> str:
         "generated artifacts."
     )
     lines.append("")
-    lines.append(
-        f"**{len(recipes)} recipes** across **{len(by_category)} categories** "
-        f"· last built {date.today().isoformat()}"
-    )
+    lines.append(f"**{len(recipes)} recipes** across **{len(by_category)} categories**")
     lines.append("")
 
     # ---- Quick links ----

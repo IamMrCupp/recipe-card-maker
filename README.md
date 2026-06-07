@@ -2,7 +2,7 @@
 
 A personal recipe collection. Markdown is the source of truth; PDFs (full-page letter for kitchen binders, 4×6 for the recipe tin) are generated artifacts.
 
-**2 recipes** across **2 categories** · last built 2026-05-26
+**2 recipes** across **2 categories**
 
 ## Quick links
 
