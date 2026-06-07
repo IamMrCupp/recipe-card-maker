@@ -28,6 +28,10 @@
 	onMount(load);
 </script>
 
+<div class="toolbar">
+	<a class="new" href="/new">+ New recipe</a>
+</div>
+
 <form
 	onsubmit={(e) => {
 		e.preventDefault();
@@ -64,6 +68,19 @@
 {/if}
 
 <style>
+	.toolbar {
+		display: flex;
+		justify-content: flex-end;
+		margin-bottom: 0.75rem;
+	}
+	.new {
+		text-decoration: none;
+		font-weight: 600;
+		color: #7a3b2e;
+		border: 1px solid #7a3b2e;
+		border-radius: 8px;
+		padding: 0.4rem 0.8rem;
+	}
 	form {
 		display: flex;
 		gap: 0.5rem;
