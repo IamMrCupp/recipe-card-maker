@@ -44,6 +44,7 @@ class StoredRecipe:
     updated_at: datetime
     source_url: str | None = None
     images: list[str] = field(default_factory=list)  # image refs; populated in §3.E
+    rel_path: str | None = None  # corpus-relative path, e.g. "cakes/erdbeertorte.md" (§3.A.3)
 
     @property
     def recipe(self) -> Recipe:
@@ -84,6 +85,7 @@ class RecipeStore(ABC):
         source: Provenance,
         source_url: str | None = None,
         images: list[str] | None = None,
+        rel_path: str | None = None,
     ) -> StoredRecipe:
         """Persist a new recipe and return it with its assigned id + timestamps."""
 
@@ -107,6 +109,7 @@ class RecipeStore(ABC):
         markdown: str | None = None,
         source_url: str | None = None,
         images: list[str] | None = None,
+        rel_path: str | None = None,
     ) -> StoredRecipe | None:
         """Update only the provided fields. Returns the updated recipe, or None if absent."""
 
