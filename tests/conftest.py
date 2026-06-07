@@ -1,8 +1,9 @@
 """Pytest configuration.
 
-Adds the repo's `_tools/` directory to `sys.path` so tests can import the
-build helpers (`recipe_parser`, `make_full_pdf`, etc.) directly — the same
-pattern the build scripts themselves use.
+Puts two directories on `sys.path` so tests can import directly:
+  - the repo root, for the `_app` backend package (`_app.main`, ...).
+  - the repo's `_tools/` directory, for the build helpers (`recipe_parser`,
+    `make_full_pdf`, etc.) — the same pattern the build scripts themselves use.
 """
 
 from __future__ import annotations
@@ -13,4 +14,5 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 TOOLS_DIR = REPO_ROOT / "_tools"
 
+sys.path.insert(0, str(REPO_ROOT))
 sys.path.insert(0, str(TOOLS_DIR))

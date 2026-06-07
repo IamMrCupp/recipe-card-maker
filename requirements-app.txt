@@ -1,0 +1,10 @@
+# Application runtime dependencies for the recipe app backend (_app/).
+#
+# Layered on top of the build-tooling runtime: the backend reuses the parser
+# and PDF builders in _tools/ as library code, so it needs reportlab too.
+#   - Just build PDFs/README?      pip install -r requirements.txt
+#   - Run the app backend?         pip install -r requirements-app.txt
+#   - Develop (lint + test all)?   pip install -r requirements-dev.txt
+-r requirements.txt
+fastapi==0.136.3
+uvicorn[standard]==0.49.0
