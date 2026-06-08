@@ -37,6 +37,12 @@ class WebsiteImportRequest(BaseModel):
     url: str
 
 
+class SocialImportRequest(BaseModel):
+    """Request body for importing a recipe from pasted text (§3.D.4)."""
+
+    text: str
+
+
 class ImportDraft(BaseModel):
     """An unsaved draft returned by an importer — markdown for the §C editor."""
 
