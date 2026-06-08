@@ -31,6 +31,7 @@
 <div class="toolbar">
 	<a class="new" href="/new">+ New recipe</a>
 	<a class="new" href="/import">Import from URL</a>
+	<a class="new" href="/import/photo">Import from photo</a>
 </div>
 
 <form

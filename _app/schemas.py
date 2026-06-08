@@ -43,6 +43,12 @@ class ImportDraft(BaseModel):
     markdown: str
 
 
+class ImportCapabilities(BaseModel):
+    """What smart import can offer, so the frontend can gate entries (§3.D.3)."""
+
+    llm_extraction: bool
+
+
 class SectionOut(BaseModel):
     name: str
     intro: str

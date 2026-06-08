@@ -29,11 +29,15 @@ from typing import Annotated
 
 import make_cards_pdf
 import make_full_pdf
-from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
+from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request, UploadFile
+from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, Response
 from recipe_parser import Recipe, parse_recipe_text
 
+from _app.llm_config import extraction_available
+from _app.photo_import import IMAGE_TYPES, MAX_IMAGE_BYTES, import_photo
 from _app.schemas import (
+    ImportCapabilities,
     ImportDraft,
     RecipeCreate,
     RecipeDetail,
@@ -163,6 +167,28 @@ def create_app(store: RecipeStore | None = None, web_build_dir: Path | None = No
     def delete_recipe(store: StoreDep, recipe_id: str):
         if not store.delete(recipe_id):
             raise HTTPException(status_code=404, detail="recipe not found")
+
+    @api.get("/import/capabilities", response_model=ImportCapabilities)
+    def import_capabilities():
+        """What smart import can offer right now. The frontend gates the photo
+        entry on this (photo import is LLM-only — useless without a key)."""
+        return ImportCapabilities(llm_extraction=extraction_available())
+
+    @api.post("/import/photo", response_model=ImportDraft)
+    async def import_from_photo(file: UploadFile):
+        """Turn an uploaded image into an unsaved markdown draft via the §D.1
+        vision path. LLM-only — no structural fallback. Image is discarded after."""
+        if file.content_type not in IMAGE_TYPES:
+            raise HTTPException(status_code=415, detail="unsupported image type")
+        data = await file.read()
+        if len(data) > MAX_IMAGE_BYTES:
+            raise HTTPException(status_code=413, detail="image too large")
+        try:
+            # Blocking HTTP call to the model — offload off the event loop.
+            markdown = await run_in_threadpool(import_photo, data, file.content_type)
+            return ImportDraft(markdown=markdown)
+        except ImportUnavailable as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     @api.post("/import/website", response_model=ImportDraft)
     def import_from_website(body: WebsiteImportRequest):

@@ -77,6 +77,38 @@ export function importWebsite(url) {
 }
 
 /**
+ * What smart import can offer (§3.D.3) — gate UI on this.
+ * @returns {Promise<{ llm_extraction: boolean }>}
+ */
+export function importCapabilities() {
+	return get('/import/capabilities');
+}
+
+/**
+ * Import a recipe from a photo (§3.D.3). Multipart upload; returns an unsaved
+ * draft `{ markdown }` for the editor. Throws with the server's message.
+ * @param {File} file
+ * @returns {Promise<{ markdown: string }>}
+ */
+export async function importPhoto(file) {
+	const body = new FormData();
+	body.append('file', file);
+	// No content-type header — the browser sets the multipart boundary itself.
+	const res = await fetch('/api/import/photo', { method: 'POST', body });
+	if (!res.ok) {
+		let detail = `${res.status} ${res.statusText}`;
+		try {
+			const data = await res.json();
+			if (data?.detail) detail = data.detail;
+		} catch {
+			/* non-JSON error body */
+		}
+		throw new Error(detail);
+	}
+	return res.json();
+}
+
+/**
  * @param {string} id
  * @param {string} markdown
  */
