@@ -28,6 +28,7 @@ import httpx
 ALLOWED_SCHEMES = frozenset({"http", "https"})
 _TIMEOUT_SECONDS = 10.0
 _MAX_BYTES = 2 * 1024 * 1024  # 2 MB — recipe pages are small; cap runaway responses
+_MAX_REDIRECTS = 5  # real blogs 301 to canonical URLs; follow a few, re-validating each hop
 _USER_AGENT = "recipe-card-maker/0.1 (+website-import)"
 
 
@@ -67,20 +68,39 @@ def _assert_safe(url: str) -> str:
     return host
 
 
-def safe_get(url: str) -> str:
+def safe_get(url: str, *, _client: httpx.Client | None = None) -> str:
     """Fetch `url` and return its HTML, enforcing the SSRF guard. Raises
-    UnsafeURL (blocked target) or FetchError (network/status/size)."""
-    _assert_safe(url)
+    UnsafeURL (blocked target) or FetchError (network/status/size/too-many-redirects).
+
+    Redirects are followed manually (`follow_redirects=False`) so that **every hop
+    is re-validated** against `_assert_safe` before it's fetched — a public URL
+    can't 30x into an internal address. Legitimate http→https / trailing-slash /
+    www canonicalization (common on recipe blogs) works. `_client` is injectable
+    for tests via httpx.MockTransport; production builds the locked-down client."""
+    owns_client = _client is None
+    client = _client or httpx.Client(
+        follow_redirects=False,
+        timeout=_TIMEOUT_SECONDS,
+        headers={"user-agent": _USER_AGENT},
+    )
     try:
-        with httpx.Client(
-            follow_redirects=False,
-            timeout=_TIMEOUT_SECONDS,
-            headers={"user-agent": _USER_AGENT},
-        ) as client:
-            resp = client.get(url)
+        current = url
+        for _ in range(_MAX_REDIRECTS + 1):
+            _assert_safe(current)  # validate the original AND every redirect target
+            resp = client.get(current)
+            if resp.is_redirect:
+                location = resp.headers.get("location")
+                if not location:
+                    raise FetchError("redirect without a location")
+                current = str(resp.url.join(location))  # resolve relative redirects
+                continue
             resp.raise_for_status()
             if len(resp.content) > _MAX_BYTES:
                 raise FetchError("response exceeds size limit")
             return resp.text
+        raise FetchError("too many redirects")
     except httpx.HTTPError as exc:
         raise FetchError(f"fetch failed: {exc}") from exc
+    finally:
+        if owns_client:
+            client.close()

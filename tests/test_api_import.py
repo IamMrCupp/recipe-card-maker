@@ -8,6 +8,7 @@ fake extractor.
 
 from __future__ import annotations
 
+import httpx
 import pytest
 from fastapi.testclient import TestClient
 from recipe_parser import parse_recipe_text
@@ -16,7 +17,7 @@ from _app import web_import
 from _app.extraction import ExtractionUnavailable
 from _app.main import create_app
 from _app.sqlite_store import SQLiteRecipeStore
-from _app.web_fetch import UnsafeURL, _assert_safe, safe_get
+from _app.web_fetch import FetchError, UnsafeURL, _assert_safe, safe_get
 
 JSONLD_PAGE = """<html><head><script type="application/ld+json">
 {"@context":"https://schema.org","@type":"Recipe","name":"Test Lemon Loaf",
@@ -64,6 +65,41 @@ def test_safe_get_rejects_bad_scheme_before_any_request():
 def test_assert_safe_allows_public_ip_literal():
     # a public address passes the guard (no fetch happens in _assert_safe)
     assert _assert_safe("https://93.184.216.34/recipe") == "93.184.216.34"
+
+
+# --- redirect following (public-IP-literal URLs so no real DNS happens) ------
+
+
+def _mock_client(handler):
+    return httpx.Client(transport=httpx.MockTransport(handler), follow_redirects=False)
+
+
+def test_safe_get_follows_redirect_to_public_target():
+    def handler(request):
+        if request.url.path == "/r":
+            return httpx.Response(301, headers={"location": "https://93.184.216.34/final"})
+        return httpx.Response(200, text="<html>final page</html>")
+
+    html = safe_get("https://93.184.216.34/r", _client=_mock_client(handler))
+    assert "final page" in html
+
+
+def test_safe_get_blocks_redirect_to_internal_target():
+    # a public URL that 30x's into a loopback address must be rejected at the hop
+    def handler(request):
+        return httpx.Response(302, headers={"location": "http://127.0.0.1/latest/meta-data"})
+
+    with pytest.raises(UnsafeURL):
+        safe_get("https://93.184.216.34/r", _client=_mock_client(handler))
+
+
+def test_safe_get_caps_redirect_chain():
+    def handler(request):
+        # always redirect onward → exceed the hop cap
+        return httpx.Response(301, headers={"location": "https://93.184.216.34/again"})
+
+    with pytest.raises(FetchError, match="too many redirects"):
+        safe_get("https://93.184.216.34/start", _client=_mock_client(handler))
 
 
 # --- import logic -----------------------------------------------------------
