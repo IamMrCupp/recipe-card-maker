@@ -12,3 +12,4 @@ sqlalchemy==2.0.50
 anthropic==0.107.1  # LLM extraction for the smart importers (§3.D.1) — optional at runtime
 recipe-scrapers==15.11.0  # structural website import (§3.D.2); LLM is the fallback
 python-multipart==0.0.32  # multipart uploads for photo import (§3.D.3)
+pillow==12.2.0  # image downsizing for recipe-image export (§3.E.1) — pinned for byte-deterministic re-encode

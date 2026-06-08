@@ -34,6 +34,7 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, Response
 from recipe_parser import Recipe, parse_recipe_text
 
+from _app.blob_store import BlobStore
 from _app.llm_config import extraction_available
 from _app.photo_import import IMAGE_TYPES, MAX_IMAGE_BYTES, import_photo
 from _app.schemas import (
@@ -69,6 +70,18 @@ def get_store(request: Request) -> RecipeStore:
 
 
 StoreDep = Annotated[RecipeStore, Depends(get_store)]
+
+
+def get_blob_store(request: Request) -> BlobStore:
+    """Dependency: the app's image BlobStore, created lazily on first use if unset."""
+    blobs = request.app.state.blob_store
+    if blobs is None:
+        blobs = BlobStore()
+        request.app.state.blob_store = blobs
+    return blobs
+
+
+BlobStoreDep = Annotated[BlobStore, Depends(get_blob_store)]
 
 
 def _validated_recipe(markdown: str) -> Recipe:
@@ -117,10 +130,16 @@ def _build_pdf_response(
     )
 
 
-def create_app(store: RecipeStore | None = None, web_build_dir: Path | None = None) -> FastAPI:
-    """Build the FastAPI app. Pass `store` / `web_build_dir` in tests; otherwise defaults apply."""
+def create_app(
+    store: RecipeStore | None = None,
+    web_build_dir: Path | None = None,
+    blob_store: BlobStore | None = None,
+) -> FastAPI:
+    """Build the FastAPI app. Pass `store` / `web_build_dir` / `blob_store` in tests;
+    otherwise defaults apply."""
     app = FastAPI(title="recipe-card-maker", version="0.1.0")
     app.state.store = store
+    app.state.blob_store = blob_store
     build_dir = (web_build_dir or WEB_BUILD_DIR).resolve()
 
     @app.get("/health")
@@ -166,9 +185,48 @@ def create_app(store: RecipeStore | None = None, web_build_dir: Path | None = No
         return RecipeDetail.from_stored(updated)
 
     @api.delete("/recipes/{recipe_id}", status_code=204)
-    def delete_recipe(store: StoreDep, recipe_id: str):
-        if not store.delete(recipe_id):
+    def delete_recipe(store: StoreDep, blobs: BlobStoreDep, recipe_id: str):
+        recipe = store.get(recipe_id)
+        if recipe is None:
             raise HTTPException(status_code=404, detail="recipe not found")
+        refs = recipe.images  # capture before deletion to clean up the blobs
+        store.delete(recipe_id)
+        for ref in refs:
+            blobs.delete(ref)
+
+    @api.post("/recipes/{recipe_id}/images", response_model=RecipeDetail)
+    async def attach_image(store: StoreDep, blobs: BlobStoreDep, recipe_id: str, file: UploadFile):
+        """Attach an uploaded image to a recipe (§3.E.1). Returns the updated detail."""
+        if file.content_type not in IMAGE_TYPES:
+            raise HTTPException(status_code=415, detail="unsupported image type")
+        data = await file.read()
+        if len(data) > MAX_IMAGE_BYTES:
+            raise HTTPException(status_code=413, detail="image too large")
+        recipe = store.get(recipe_id)
+        if recipe is None:
+            raise HTTPException(status_code=404, detail="recipe not found")
+        ref = blobs.put(data, file.content_type)
+        updated = store.update(recipe_id, images=[*recipe.images, ref])
+        return RecipeDetail.from_stored(updated)
+
+    @api.delete("/recipes/{recipe_id}/images/{ref}", status_code=204)
+    def detach_image(store: StoreDep, blobs: BlobStoreDep, recipe_id: str, ref: str):
+        recipe = store.get(recipe_id)
+        if recipe is None or ref not in recipe.images:
+            raise HTTPException(status_code=404, detail="image not found")
+        store.update(recipe_id, images=[r for r in recipe.images if r != ref])
+        blobs.delete(ref)
+
+    @api.get("/images/{ref}")
+    def serve_image(blobs: BlobStoreDep, ref: str):
+        """Serve an image blob by ref. Ref shape is validated (no path traversal)."""
+        try:
+            path = blobs.path(ref)
+        except ValueError as exc:
+            raise HTTPException(status_code=404, detail="image not found") from exc
+        if not path.exists():
+            raise HTTPException(status_code=404, detail="image not found")
+        return FileResponse(path, media_type=blobs.content_type(ref))
 
     @api.get("/import/capabilities", response_model=ImportCapabilities)
     def import_capabilities():

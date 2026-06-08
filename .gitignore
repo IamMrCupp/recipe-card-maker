@@ -12,6 +12,10 @@ _app/var/
 *.db
 *.sqlite3
 
+# Local image blob store (§3.E.1). Originals live here, full quality; export
+# materializes downsized web copies into a committed images/ dir instead.
+_media/
+
 # Editor / OS cruft
 .vscode/
 .idea/
