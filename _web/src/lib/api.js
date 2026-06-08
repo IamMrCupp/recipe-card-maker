@@ -34,6 +34,29 @@ async function send(method, path, body) {
 }
 
 /**
+ * POST a single file as multipart/form-data. No content-type header — the
+ * browser sets the multipart boundary itself. Unwraps the server's error detail.
+ * @param {string} path
+ * @param {File} file
+ */
+async function postFile(path, file) {
+	const body = new FormData();
+	body.append('file', file);
+	const res = await fetch(`/api${path}`, { method: 'POST', body });
+	if (!res.ok) {
+		let detail = `${res.status} ${res.statusText}`;
+		try {
+			const data = await res.json();
+			if (data?.detail) detail = data.detail;
+		} catch {
+			/* non-JSON error body */
+		}
+		throw new Error(detail);
+	}
+	return res.json();
+}
+
+/**
  * List recipes, optionally filtered.
  * @param {{ category?: string, tag?: string }} [opts]
  */
@@ -100,22 +123,27 @@ export function importCapabilities() {
  * @param {File} file
  * @returns {Promise<{ markdown: string }>}
  */
-export async function importPhoto(file) {
-	const body = new FormData();
-	body.append('file', file);
-	// No content-type header — the browser sets the multipart boundary itself.
-	const res = await fetch('/api/import/photo', { method: 'POST', body });
-	if (!res.ok) {
-		let detail = `${res.status} ${res.statusText}`;
-		try {
-			const data = await res.json();
-			if (data?.detail) detail = data.detail;
-		} catch {
-			/* non-JSON error body */
-		}
-		throw new Error(detail);
-	}
-	return res.json();
+export function importPhoto(file) {
+	return postFile('/import/photo', file);
+}
+
+/**
+ * Attach an image to a recipe (§3.E.1). Returns the updated recipe detail.
+ * @param {string} id
+ * @param {File} file
+ * @returns {Promise<{ images: string[] }>}
+ */
+export function attachImage(id, file) {
+	return postFile(`/recipes/${encodeURIComponent(id)}/images`, file);
+}
+
+/**
+ * Detach an image from a recipe by its ref (the trailing segment of its URL).
+ * @param {string} id
+ * @param {string} ref
+ */
+export function deleteImage(id, ref) {
+	return send('DELETE', `/recipes/${encodeURIComponent(id)}/images/${encodeURIComponent(ref)}`);
 }
 
 /**
