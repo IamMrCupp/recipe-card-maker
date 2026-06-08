@@ -11,6 +11,10 @@
 		initialMarkdown = '',
 		initialCategory = '',
 		initialImages = [],
+		// §D.3 photo import passes the captured File here; on create we attach it to
+		// the new recipe (best-effort) so the source photo rides import→save without
+		// any server-side pending/orphan bookkeeping.
+		pendingImage = null,
 		source = 'hand'
 	} = $props();
 
@@ -50,10 +54,22 @@
 		busy = true;
 		error = '';
 		try {
-			const recipe =
-				mode === 'create'
-					? await createRecipe(markdown, { category: category.trim() || undefined, source })
-					: await updateRecipe(id, markdown);
+			let recipe;
+			if (mode === 'create') {
+				recipe = await createRecipe(markdown, { category: category.trim() || undefined, source });
+				if (pendingImage) {
+					// Best-effort: the recipe is already saved. If the attach fails the
+					// user just sees no image and can re-attach in edit — don't re-save
+					// (that would duplicate the recipe).
+					try {
+						await attachImage(recipe.id, pendingImage);
+					} catch {
+						/* image attach failed; recipe is saved */
+					}
+				}
+			} else {
+				recipe = await updateRecipe(id, markdown);
+			}
 			goto(`/recipes/${recipe.id}`);
 		} catch (e) {
 			error = String(e instanceof Error ? e.message : e);
