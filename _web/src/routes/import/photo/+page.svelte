@@ -46,8 +46,8 @@
 <h1>Import from photo</h1>
 
 {#if draft !== null}
-	<p class="hint">Review the draft, fill any blanks, then save.</p>
-	<Editor mode="create" initialMarkdown={draft} source="photo" />
+	<p class="hint">Review the draft, fill any blanks, then save. The photo will be attached.</p>
+	<Editor mode="create" initialMarkdown={draft} source="photo" pendingImage={file} />
 {:else if available === false}
 	<p class="hint">
 		AI photo import isn't configured on this server. <a href="/new">Enter by hand</a> instead.
