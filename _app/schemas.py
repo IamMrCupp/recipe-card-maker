@@ -92,6 +92,7 @@ class RecipeDetail(RecipeSummary):
     markdown: str
     intro: str
     sections: list[SectionOut]
+    images: list[str]  # servable URLs (/api/images/<ref>) for attached images (§3.E.1)
 
     @classmethod
     def from_stored(cls, stored: StoredRecipe) -> RecipeDetail:
@@ -112,4 +113,5 @@ class RecipeDetail(RecipeSummary):
                 SectionOut(name=s.name, intro=s.intro, blocks=s.blocks, prose=s.prose)
                 for s in recipe.sections
             ],
+            images=[f"/api/images/{ref}" for ref in stored.images],
         )
