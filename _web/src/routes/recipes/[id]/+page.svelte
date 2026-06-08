@@ -51,6 +51,12 @@
 			<a class="edit" href={`/recipes/${recipe.id}/edit`}>✎ Edit</a>
 		</div>
 
+		{#if recipe.images?.length}
+			<div class="photos">
+				{#each recipe.images as src (src)}<img {src} alt={recipe.title} loading="lazy" />{/each}
+			</div>
+		{/if}
+
 		{#if recipe.intro}<p class="intro">{@html renderInline(recipe.intro)}</p>{/if}
 
 		{#each recipe.sections as section (section.name)}
@@ -99,6 +105,18 @@
 		border: 1px solid #d8cec6;
 		border-radius: 8px;
 		padding: 0.3rem 0.6rem;
+	}
+	.photos {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem;
+		margin: 0.75rem 0;
+	}
+	.photos img {
+		max-width: 100%;
+		max-height: 22rem;
+		border-radius: 10px;
+		object-fit: cover;
 	}
 	.intro {
 		font-style: italic;

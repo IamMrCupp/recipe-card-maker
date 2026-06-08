@@ -25,7 +25,12 @@
 {:else if recipe}
 	<p><a href={`/recipes/${recipe.id}`}>← Back to recipe</a></p>
 	<h1>Edit recipe</h1>
-	<Editor mode="edit" id={recipe.id} initialMarkdown={recipe.markdown} />
+	<Editor
+		mode="edit"
+		id={recipe.id}
+		initialMarkdown={recipe.markdown}
+		initialImages={recipe.images}
+	/>
 {:else}
 	<p>Loading…</p>
 {/if}
