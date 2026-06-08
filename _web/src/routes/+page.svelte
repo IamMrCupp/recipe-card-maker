@@ -32,6 +32,7 @@
 	<a class="new" href="/new">+ New recipe</a>
 	<a class="new" href="/import">Import from URL</a>
 	<a class="new" href="/import/photo">Import from photo</a>
+	<a class="new" href="/import/social">Import from paste</a>
 </div>
 
 <form

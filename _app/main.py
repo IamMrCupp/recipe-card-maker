@@ -43,8 +43,10 @@ from _app.schemas import (
     RecipeDetail,
     RecipeSummary,
     RecipeUpdate,
+    SocialImportRequest,
     WebsiteImportRequest,
 )
+from _app.social_import import import_social
 from _app.sqlite_store import SQLiteRecipeStore
 from _app.storage import RecipeStore
 from _app.web_fetch import FetchError, UnsafeURL
@@ -202,6 +204,17 @@ def create_app(store: RecipeStore | None = None, web_build_dir: Path | None = No
             raise HTTPException(status_code=400, detail=str(exc)) from exc
         except FetchError as exc:
             raise HTTPException(status_code=502, detail=str(exc)) from exc
+        except ImportUnavailable as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+
+    @api.post("/import/social", response_model=ImportDraft)
+    def import_from_social(body: SocialImportRequest):
+        """Turn pasted caption/post text into an unsaved markdown draft via the
+        §D.1 text path. Paste-only, LLM-only — no fetch, no fallback."""
+        if not body.text.strip():
+            raise HTTPException(status_code=422, detail="text is empty")
+        try:
+            return ImportDraft(markdown=import_social(body.text))
         except ImportUnavailable as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
 

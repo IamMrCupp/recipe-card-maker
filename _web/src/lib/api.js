@@ -77,6 +77,16 @@ export function importWebsite(url) {
 }
 
 /**
+ * Import a recipe from pasted text (§3.D.4). Returns an unsaved draft `{ markdown }`
+ * for the editor; throws with the server's message on failure.
+ * @param {string} text
+ * @returns {Promise<{ markdown: string }>}
+ */
+export function importSocial(text) {
+	return send('POST', '/import/social', { text });
+}
+
+/**
  * What smart import can offer (§3.D.3) — gate UI on this.
  * @returns {Promise<{ llm_extraction: boolean }>}
  */
