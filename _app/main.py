@@ -280,6 +280,15 @@ def create_app(
     def recipe_card_pdf(store: StoreDep, recipe_id: str):
         return _build_pdf_response(store, recipe_id, make_cards_pdf.build_pdf, "_4x6")
 
+    @api.get("/recipes/{recipe_id}/card-landscape.pdf")
+    def recipe_card_landscape_pdf(store: StoreDep, recipe_id: str):
+        return _build_pdf_response(
+            store,
+            recipe_id,
+            lambda r, p: make_cards_pdf.build_pdf(r, p, landscape=True),
+            "_4x6_landscape",
+        )
+
     @api.get("/recipes/{recipe_id}/letter.pdf")
     def recipe_letter_pdf(store: StoreDep, recipe_id: str):
         return _build_pdf_response(store, recipe_id, make_full_pdf.build_pdf, "_full")

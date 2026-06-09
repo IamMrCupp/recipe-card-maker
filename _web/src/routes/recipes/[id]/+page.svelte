@@ -45,6 +45,9 @@
 			<a href={`/api/recipes/${recipe.id}/card.pdf`} target="_blank" rel="noopener">
 				⬇ 4×6 card
 			</a>
+			<a href={`/api/recipes/${recipe.id}/card-landscape.pdf`} target="_blank" rel="noopener">
+				⬇ 4×6 landscape
+			</a>
 			<a href={`/api/recipes/${recipe.id}/letter.pdf`} target="_blank" rel="noopener">
 				⬇ Letter page
 			</a>
