@@ -1,0 +1,58 @@
+/* Theme tokens. Light is the base :root palette; dark applies either when the OS
+ * prefers dark AND the user hasn't overridden (auto), or when they explicitly pick
+ * dark via the header toggle (data-theme="dark"). Explicit light keeps the base
+ * palette even under an OS dark preference. */
+
+:root {
+	--bg: #faf7f4;
+	--surface: #ffffff;
+	--text: #2b2b2b;
+	--text-muted: #5b5048;
+	--muted: #9a8b80;
+	--accent: #7a3b2e;
+	--on-accent: #ffffff;
+	--danger: #b23b2e;
+	--danger-border: #d8b0aa;
+	--border: #d8cec6;
+	--rule: #ece4dd;
+	--chip-bg: #f1e9e2;
+	--chip-text: #6b5347;
+	color-scheme: light;
+}
+
+/* Shared dark palette (warm, to match the cozy recipe aesthetic). */
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme='light']) {
+		--bg: #17120e;
+		--surface: #221b15;
+		--text: #ece4dd;
+		--text-muted: #c2b3a5;
+		--muted: #93857a;
+		--accent: #d98a6a;
+		--on-accent: #2a1a12;
+		--danger: #e88a76;
+		--danger-border: #6e3b32;
+		--border: #3a3029;
+		--rule: #2d251f;
+		--chip-bg: #2d251f;
+		--chip-text: #cbbaa9;
+		color-scheme: dark;
+	}
+}
+
+:root[data-theme='dark'] {
+	--bg: #17120e;
+	--surface: #221b15;
+	--text: #ece4dd;
+	--text-muted: #c2b3a5;
+	--muted: #93857a;
+	--accent: #d98a6a;
+	--on-accent: #2a1a12;
+	--danger: #e88a76;
+	--danger-border: #6e3b32;
+	--border: #3a3029;
+	--rule: #2d251f;
+	--chip-bg: #2d251f;
+	--chip-text: #cbbaa9;
+	color-scheme: dark;
+}

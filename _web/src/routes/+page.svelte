@@ -79,8 +79,8 @@
 	.new {
 		text-decoration: none;
 		font-weight: 600;
-		color: #7a3b2e;
-		border: 1px solid #7a3b2e;
+		color: var(--accent);
+		border: 1px solid var(--accent);
 		border-radius: 8px;
 		padding: 0.4rem 0.8rem;
 	}
@@ -92,21 +92,21 @@
 	input {
 		flex: 1;
 		padding: 0.5rem 0.65rem;
-		border: 1px solid #d8cec6;
+		border: 1px solid var(--border);
 		border-radius: 8px;
 		font-size: 1rem;
 	}
 	button {
 		padding: 0.5rem 0.9rem;
-		border: 1px solid #7a3b2e;
-		background: #7a3b2e;
-		color: #fff;
+		border: 1px solid var(--accent);
+		background: var(--accent);
+		color: var(--on-accent);
 		border-radius: 8px;
 		cursor: pointer;
 	}
 	button[type='button'] {
-		background: #fff;
-		color: #7a3b2e;
+		background: var(--surface);
+		color: var(--accent);
 	}
 	.recipes {
 		list-style: none;
@@ -116,8 +116,8 @@
 		gap: 0.5rem;
 	}
 	.recipes li {
-		background: #fff;
-		border: 1px solid #ece4dd;
+		background: var(--surface);
+		border: 1px solid var(--rule);
 		border-radius: 10px;
 		padding: 0.75rem 0.9rem;
 	}
@@ -133,7 +133,7 @@
 	}
 	.cat {
 		font-size: 0.8rem;
-		color: #9a8b80;
+		color: var(--muted);
 	}
 	.tags {
 		margin-top: 0.4rem;
@@ -143,15 +143,15 @@
 	}
 	.tag {
 		font-size: 0.72rem;
-		background: #f1e9e2;
-		color: #6b5347;
+		background: var(--chip-bg);
+		color: var(--chip-text);
 		padding: 0.1rem 0.45rem;
 		border-radius: 999px;
 	}
 	.error {
-		color: #b23b2e;
+		color: var(--danger);
 	}
 	.empty {
-		color: #9a8b80;
+		color: var(--muted);
 	}
 </style>

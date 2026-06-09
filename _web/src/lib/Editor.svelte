@@ -148,13 +148,13 @@
 	}
 	small {
 		font-weight: 400;
-		color: #9a8b80;
+		color: var(--muted);
 	}
 	input,
 	textarea {
 		font-size: 1rem;
 		padding: 0.5rem 0.6rem;
-		border: 1px solid #d8cec6;
+		border: 1px solid var(--border);
 		border-radius: 8px;
 		font-family: inherit;
 	}
@@ -171,19 +171,19 @@
 	}
 	button {
 		padding: 0.5rem 1rem;
-		border: 1px solid #7a3b2e;
-		background: #7a3b2e;
-		color: #fff;
+		border: 1px solid var(--accent);
+		background: var(--accent);
+		color: var(--on-accent);
 		border-radius: 8px;
 		cursor: pointer;
 	}
 	button.danger {
-		background: #fff;
-		color: #b23b2e;
-		border-color: #d8b0aa;
+		background: var(--surface);
+		color: var(--danger);
+		border-color: var(--danger-border);
 	}
 	.cancel {
-		color: #7a3b2e;
+		color: var(--accent);
 		text-decoration: none;
 	}
 	.images {
@@ -208,16 +208,16 @@
 		height: 7rem;
 		object-fit: cover;
 		border-radius: 8px;
-		border: 1px solid #d8cec6;
+		border: 1px solid var(--border);
 	}
 	.thumb .remove {
 		padding: 0.2rem 0.5rem;
 		font-size: 0.75rem;
-		background: #fff;
-		color: #b23b2e;
-		border-color: #d8b0aa;
+		background: var(--surface);
+		color: var(--danger);
+		border-color: var(--danger-border);
 	}
 	.error {
-		color: #b23b2e;
+		color: var(--danger);
 	}
 </style>
