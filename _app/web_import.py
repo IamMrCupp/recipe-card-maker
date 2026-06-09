@@ -45,6 +45,36 @@ def _try(fn: Callable[[], object]) -> object | None:
         return None
 
 
+def _clean_instructions(steps: list[str]) -> list[str]:
+    """Drop bare step-label headers some sites emit via `HowToSection` names.
+
+    Such sites (e.g. theunlikelybaker) nest steps under section names ("Combine",
+    "Stir", "Chill"), and recipe-scrapers surfaces each name as its own entry right
+    before the long step it heads — producing interleaved junk in the draft.
+
+    A header is: a tiny (≤2-word, ≤20-char), punctuation-less entry, immediately
+    followed by a step >2× longer **that contains the header's word** (the label is
+    the action the step elaborates — "Combine" → "...combine flour..."). That last
+    condition is what keeps a real terse step ("Preheat oven" before an unrelated
+    step) from being dropped. Conservative either way — the draft is editable."""
+    out: list[str] = []
+    for i, step in enumerate(steps):
+        s = step.strip()
+        nxt = steps[i + 1].strip() if i + 1 < len(steps) else ""
+        first_word = s.split()[0].lower() if s.split() else ""
+        is_label = (
+            len(s) <= 20
+            and len(s.split()) <= 2
+            and not s.endswith((".", "!", "?", ":", ";"))
+            and len(nxt) > 40
+            and len(nxt) > 2 * len(s)
+            and first_word in nxt.lower()  # label heads its own elaboration
+        )
+        if not is_label:
+            out.append(step)
+    return out
+
+
 def _fmt_minutes(minutes: object) -> str | None:
     if not isinstance(minutes, int) or minutes <= 0:
         return None
@@ -70,7 +100,7 @@ def _draft_from_scraper(scraper) -> RecipeDraft:
         yield_amount=_try(scraper.yields) or None,
         intro=_try(scraper.description) or None,
         ingredients=_try(scraper.ingredients) or [],
-        steps=_try(scraper.instructions_list) or [],
+        steps=_clean_instructions(_try(scraper.instructions_list) or []),
     )
 
 

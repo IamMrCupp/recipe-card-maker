@@ -102,6 +102,35 @@ def test_safe_get_caps_redirect_chain():
         safe_get("https://93.184.216.34/start", _client=_mock_client(handler))
 
 
+# --- instruction-label cleanup (§D.2, from on-device ube-crinkles import) ----
+
+
+def test_clean_instructions_drops_section_labels():
+    # the theunlikelybaker pattern: HowToSection names emitted as their own steps
+    raw = [
+        "Combine",
+        "In a medium bowl, combine flour, baking powder and salt. Set aside.",
+        "Chill",
+        "Cover the bowl with cling wrap and chill in the fridge for at least 4 hours.",
+    ]
+    cleaned = web_import._clean_instructions(raw)
+    assert cleaned == [
+        "In a medium bowl, combine flour, baking powder and salt. Set aside.",
+        "Cover the bowl with cling wrap and chill in the fridge for at least 4 hours.",
+    ]
+
+
+def test_clean_instructions_keeps_real_terse_step():
+    # "Preheat oven" is a real step (its word isn't echoed in the next, unrelated step)
+    raw = ["Preheat oven", "Mix the dry ingredients in a large bowl until evenly combined."]
+    assert web_import._clean_instructions(raw) == raw
+
+
+def test_clean_instructions_no_op_on_normal_steps():
+    raw = ["Cream butter and sugar.", "Fold in flour and bake at 175C for 50 minutes."]
+    assert web_import._clean_instructions(raw) == raw
+
+
 # --- import logic -----------------------------------------------------------
 
 
