@@ -69,26 +69,26 @@ STYLES = {
         spaceAfter=4,
     ),
     # Content styles are sized for density — a recipe-tin card should fit on as few
-    # cards as possible while staying readable for kitchen reference (~8pt body).
+    # cards as possible while staying readable for kitchen reference (~6pt body).
     # `keepWithNext` on the headers stops a section/sub title stranding alone at a
     # page bottom (it moves to the next card with its content).
     "section": ParagraphStyle(
         "SEC",
         parent=_base["Normal"],
         fontName="Times-Bold",
-        fontSize=9,
-        leading=10.5,
+        fontSize=8,
+        leading=9,
         textColor=ACCENT,
-        spaceBefore=3,
-        spaceAfter=2,
+        spaceBefore=2,
+        spaceAfter=1,
         keepWithNext=1,
     ),
     "sub": ParagraphStyle(
         "SUB",
         parent=_base["Normal"],
         fontName="Times-Bold",
-        fontSize=7.5,
-        leading=8.5,
+        fontSize=6.5,
+        leading=7.5,
         textColor=INK,
         spaceBefore=2,
         spaceAfter=1,
@@ -98,8 +98,8 @@ STYLES = {
         "B",
         parent=_base["Normal"],
         fontName="Times-Roman",
-        fontSize=7,
-        leading=8.5,
+        fontSize=6,
+        leading=7.5,
         textColor=INK,
         alignment=TA_JUSTIFY,
         spaceAfter=2,
@@ -108,8 +108,8 @@ STYLES = {
         "BU",
         parent=_base["Normal"],
         fontName="Times-Roman",
-        fontSize=7,
-        leading=8.5,
+        fontSize=6,
+        leading=7.5,
         textColor=INK,
         leftIndent=10,
         firstLineIndent=-8,
@@ -119,8 +119,8 @@ STYLES = {
         "ST2",
         parent=_base["Normal"],
         fontName="Times-Roman",
-        fontSize=7,
-        leading=8.5,
+        fontSize=6,
+        leading=7.5,
         textColor=INK,
         alignment=TA_JUSTIFY,
         leftIndent=14,
@@ -131,8 +131,8 @@ STYLES = {
         "N",
         parent=_base["Normal"],
         fontName="Times-Italic",
-        fontSize=7,
-        leading=8.5,
+        fontSize=6,
+        leading=7.5,
         textColor=SOFT,
         alignment=TA_JUSTIFY,
         spaceAfter=2,
@@ -233,7 +233,7 @@ def _make_page_templates(recipe: Recipe, page_size: tuple[float, float] = CARD_S
     pad_bottom = 0.18 * inch
 
     # First page: bigger header leaves less room for body
-    first_header_h = 1.0 * inch
+    first_header_h = 0.9 * inch
     first_frame = Frame(
         pad_left,
         pad_bottom,
@@ -247,7 +247,7 @@ def _make_page_templates(recipe: Recipe, page_size: tuple[float, float] = CARD_S
         showBoundary=0,
     )
 
-    cont_header_h = 0.4 * inch
+    cont_header_h = 0.33 * inch
     cont_frame = Frame(
         pad_left,
         pad_bottom,
