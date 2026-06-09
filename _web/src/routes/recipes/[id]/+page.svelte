@@ -80,7 +80,7 @@
 
 <style>
 	.cat {
-		color: #9a8b80;
+		color: var(--muted);
 		margin: 0.2rem 0;
 	}
 	.tags {
@@ -91,8 +91,8 @@
 	}
 	.tag {
 		font-size: 0.72rem;
-		background: #f1e9e2;
-		color: #6b5347;
+		background: var(--chip-bg);
+		color: var(--chip-text);
 		padding: 0.1rem 0.45rem;
 		border-radius: 999px;
 	}
@@ -104,8 +104,8 @@
 	.downloads a {
 		font-size: 0.85rem;
 		text-decoration: none;
-		color: #7a3b2e;
-		border: 1px solid #d8cec6;
+		color: var(--accent);
+		border: 1px solid var(--border);
 		border-radius: 8px;
 		padding: 0.3rem 0.6rem;
 	}
@@ -123,26 +123,26 @@
 	}
 	.intro {
 		font-style: italic;
-		color: #5b5048;
+		color: var(--text-muted);
 	}
 	/* inline-markdown output from renderInline() (via {@html}) needs :global */
 	article :global(code) {
 		font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
 		font-size: 0.9em;
-		background: #f1e9e2;
+		background: var(--chip-bg);
 		padding: 0.05rem 0.3rem;
 		border-radius: 4px;
 	}
 	h2 {
-		border-bottom: 1px solid #ece4dd;
+		border-bottom: 1px solid var(--rule);
 		padding-bottom: 0.2rem;
 		margin-top: 1.5rem;
 	}
 	h3 {
 		margin-bottom: 0.3rem;
-		color: #7a3b2e;
+		color: var(--accent);
 	}
 	.error {
-		color: #b23b2e;
+		color: var(--danger);
 	}
 </style>

@@ -69,7 +69,7 @@
 	input {
 		font-size: 1rem;
 		padding: 0.5rem 0.6rem;
-		border: 1px solid #d8cec6;
+		border: 1px solid var(--border);
 		border-radius: 8px;
 		font-family: inherit;
 	}
@@ -80,9 +80,9 @@
 	}
 	button {
 		padding: 0.5rem 1rem;
-		border: 1px solid #7a3b2e;
-		background: #7a3b2e;
-		color: #fff;
+		border: 1px solid var(--accent);
+		background: var(--accent);
+		color: var(--on-accent);
 		border-radius: 8px;
 		cursor: pointer;
 	}
@@ -91,13 +91,13 @@
 		cursor: default;
 	}
 	.cancel {
-		color: #7a3b2e;
+		color: var(--accent);
 		text-decoration: none;
 	}
 	.hint {
-		color: #9a8b80;
+		color: var(--muted);
 	}
 	.error {
-		color: #b23b2e;
+		color: var(--danger);
 	}
 </style>
