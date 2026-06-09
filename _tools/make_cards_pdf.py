@@ -215,8 +215,12 @@ def _split_paragraphs(text: str) -> list[str]:
 # --- Page templates with headers ---------------------------------------------
 
 
-def _make_page_templates(recipe: Recipe):
-    """Two templates: 'first' has the full title header, 'cont' has a small one."""
+def _make_page_templates(recipe: Recipe, page_size: tuple[float, float] = CARD_SIZE):
+    """Two templates: 'first' has the full title header, 'cont' has a small one.
+
+    `page_size` is the card dimensions — (4×6) portrait by default, (6×4) for the
+    landscape variant. All frame/header geometry derives from it, so the same code
+    lays out either orientation."""
     pad_left = 0.2 * inch
     pad_right = 0.2 * inch
     pad_top = 0.18 * inch
@@ -227,8 +231,8 @@ def _make_page_templates(recipe: Recipe):
     first_frame = Frame(
         pad_left,
         pad_bottom,
-        CARD_SIZE[0] - pad_left - pad_right,
-        CARD_SIZE[1] - pad_top - pad_bottom - first_header_h,
+        page_size[0] - pad_left - pad_right,
+        page_size[1] - pad_top - pad_bottom - first_header_h,
         leftPadding=0,
         rightPadding=0,
         topPadding=0,
@@ -241,8 +245,8 @@ def _make_page_templates(recipe: Recipe):
     cont_frame = Frame(
         pad_left,
         pad_bottom,
-        CARD_SIZE[0] - pad_left - pad_right,
-        CARD_SIZE[1] - pad_top - pad_bottom - cont_header_h,
+        page_size[0] - pad_left - pad_right,
+        page_size[1] - pad_top - pad_bottom - cont_header_h,
         leftPadding=0,
         rightPadding=0,
         topPadding=0,
@@ -256,7 +260,7 @@ def _make_page_templates(recipe: Recipe):
 
     def draw_first_header(canvas, doc):
         canvas.saveState()
-        w, h = CARD_SIZE
+        w, h = page_size
         # Title
         canvas.setFont("Times-Bold", 17)
         canvas.setFillColor(ACCENT)
@@ -284,7 +288,7 @@ def _make_page_templates(recipe: Recipe):
 
     def draw_cont_header(canvas, doc):
         canvas.saveState()
-        w, h = CARD_SIZE
+        w, h = page_size
         canvas.setFont("Times-Bold", 13)
         canvas.setFillColor(ACCENT)
         canvas.drawCentredString(w / 2, h - pad_top - 11, f"{recipe.title} — continued")
@@ -296,9 +300,9 @@ def _make_page_templates(recipe: Recipe):
 
     return [
         PageTemplate(
-            id="first", frames=[first_frame], onPage=draw_first_header, pagesize=CARD_SIZE
+            id="first", frames=[first_frame], onPage=draw_first_header, pagesize=page_size
         ),
-        PageTemplate(id="cont", frames=[cont_frame], onPage=draw_cont_header, pagesize=CARD_SIZE),
+        PageTemplate(id="cont", frames=[cont_frame], onPage=draw_cont_header, pagesize=page_size),
     ]
 
 
@@ -335,12 +339,15 @@ def _subtitle_from_meta(meta: dict) -> str | None:
 # --- Build ------------------------------------------------------------------
 
 
-def build_pdf(recipe: Recipe, out_path: Path) -> None:
+def build_pdf(recipe: Recipe, out_path: Path, *, landscape: bool = False) -> None:
+    """Render the recipe-tin card. Default is 4×6 portrait (the committed
+    `_4x6.pdf`); `landscape=True` produces a 6×4 card (long edge horizontal)."""
     ensure_reproducible_pdf_dates()
+    page_size = (CARD_SIZE[1], CARD_SIZE[0]) if landscape else CARD_SIZE
     out_path.parent.mkdir(parents=True, exist_ok=True)
     doc = BaseDocTemplate(
         str(out_path),
-        pagesize=CARD_SIZE,
+        pagesize=page_size,
         leftMargin=0.2 * inch,
         rightMargin=0.2 * inch,
         topMargin=0.18 * inch,
@@ -348,7 +355,7 @@ def build_pdf(recipe: Recipe, out_path: Path) -> None:
         title=recipe.title,
         author=recipe.meta.get("source", "Aaron's kitchen"),
     )
-    doc.addPageTemplates(_make_page_templates(recipe))
+    doc.addPageTemplates(_make_page_templates(recipe, page_size))
 
     story: list = [NextPageTemplate("cont")]
     for section in recipe.sections:

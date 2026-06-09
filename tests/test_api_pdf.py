@@ -65,3 +65,29 @@ def test_card_and_letter_differ(client):
     letter = api.get(f"/api/recipes/{rid}/letter.pdf").content
     assert card[:5] == b"%PDF-" and letter[:5] == b"%PDF-"
     assert card != letter  # different page sizes / layouts
+
+
+def _mediabox_inches(pdf: bytes) -> tuple[float, float]:
+    import re
+
+    m = re.search(rb"/MediaBox\s*\[\s*0\s+0\s+([\d.]+)\s+([\d.]+)", pdf)
+    return float(m.group(1)) / 72, float(m.group(2)) / 72
+
+
+def test_landscape_card_is_6x4(client):
+    api, rid = client
+    portrait = api.get(f"/api/recipes/{rid}/card.pdf")
+    landscape = api.get(f"/api/recipes/{rid}/card-landscape.pdf")
+    assert landscape.status_code == 200
+    assert landscape.content[:5] == b"%PDF-"
+    assert "landscape" in landscape.headers["content-disposition"]
+
+    pw, ph = _mediabox_inches(portrait.content)
+    lw, lh = _mediabox_inches(landscape.content)
+    assert (round(pw), round(ph)) == (4, 6)  # portrait unchanged
+    assert (round(lw), round(lh)) == (6, 4)  # landscape rotated
+
+
+def test_landscape_unknown_id_404(client):
+    api, _ = client
+    assert api.get("/api/recipes/nope/card-landscape.pdf").status_code == 404
