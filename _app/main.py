@@ -34,12 +34,14 @@ from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse, Response
 from recipe_parser import Recipe, parse_recipe_text
 
+from _app import auth
 from _app.blob_store import BlobStore
 from _app.llm_config import extraction_available
 from _app.photo_import import IMAGE_TYPES, MAX_IMAGE_BYTES, import_photo
 from _app.schemas import (
     ImportCapabilities,
     ImportDraft,
+    LoginRequest,
     RecipeCreate,
     RecipeDetail,
     RecipeSummary,
@@ -147,7 +149,23 @@ def create_app(
         """Liveness probe — confirms the backend is up."""
         return {"status": "ok"}
 
-    api = APIRouter(prefix="/api")
+    # Everything data-bearing is gated (Phase 4α). The static SPA shell below is
+    # deliberately public — no data in it, and the PWA service worker must be able
+    # to precache it without credentials. Auth is disabled entirely when
+    # RCM_AUTH_PASSWORD is unset (local dev).
+    api = APIRouter(prefix="/api", dependencies=[Depends(auth.require_auth)])
+
+    @api.post("/auth/login", status_code=204)
+    def auth_login(request: Request, body: LoginRequest, response: Response):
+        auth.login(request, body.password, response)
+
+    @api.post("/auth/logout", status_code=204)
+    def auth_logout(response: Response):
+        auth.logout(response)
+
+    @api.get("/auth/me")
+    def auth_me(request: Request):
+        return auth.status(request)
 
     @api.get("/recipes", response_model=list[RecipeSummary])
     def list_recipes(store: StoreDep, category: str | None = None, tag: str | None = None):

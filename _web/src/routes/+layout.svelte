@@ -1,7 +1,9 @@
 <script>
 	import '../app.css';
 	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
 	import favicon from '$lib/assets/favicon.svg';
+	import { authStatus, logout } from '$lib/api';
 
 	let { children } = $props();
 
@@ -10,9 +12,28 @@
 	let theme = $state('auto');
 	const labels = { auto: '🌗 Auto', light: '☀️ Light', dark: '🌙 Dark' };
 
+	// Hosted mode (Phase 4α): show a logout control when actually signed in.
+	// In local/dev mode auth_enabled is false and the control stays hidden.
+	let authedSession = $state(false);
+
 	onMount(() => {
 		theme = localStorage.getItem('theme') || 'auto';
+		authStatus()
+			.then((s) => {
+				authedSession = s.auth_enabled && s.authenticated;
+			})
+			.catch(() => {});
 	});
+
+	async function signOut() {
+		try {
+			await logout();
+		} catch {
+			/* cookie may already be gone */
+		}
+		authedSession = false;
+		goto('/login');
+	}
 
 	function cycle() {
 		theme = theme === 'auto' ? 'light' : theme === 'light' ? 'dark' : 'auto';
@@ -34,7 +55,12 @@
 
 <header>
 	<a class="brand" href="/">🍓 Recipe Box</a>
-	<button class="theme" onclick={cycle} title="Toggle light / dark / auto">{labels[theme]}</button>
+	<div class="controls">
+		<button class="theme" onclick={cycle} title="Toggle light / dark / auto">{labels[theme]}</button>
+		{#if authedSession}
+			<button class="theme" onclick={signOut} title="Sign out">Sign out</button>
+		{/if}
+	</div>
 </header>
 
 <main>
@@ -65,6 +91,10 @@
 		font-size: 1.15rem;
 		text-decoration: none;
 		color: var(--accent);
+	}
+	.controls {
+		display: flex;
+		gap: 0.4rem;
 	}
 	.theme {
 		font: inherit;

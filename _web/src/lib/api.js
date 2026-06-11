@@ -4,9 +4,23 @@
 async function get(path) {
 	const res = await fetch(`/api${path}`);
 	if (!res.ok) {
+		if (redirectOn401(res)) return new Promise(() => {}); // navigation takes over
 		throw new Error(`${res.status} ${res.statusText}`);
 	}
 	return res.json();
+}
+
+/**
+ * A 401 means the session is missing/expired (hosted mode) — bounce to the
+ * login page instead of surfacing a raw error. No-op when already there.
+ * @param {Response} res
+ */
+function redirectOn401(res) {
+	if (res.status === 401 && !window.location.pathname.startsWith('/login')) {
+		window.location.href = '/login';
+		return true;
+	}
+	return false;
 }
 
 /**
@@ -21,6 +35,7 @@ async function send(method, path, body) {
 		body: body === undefined ? undefined : JSON.stringify(body)
 	});
 	if (!res.ok) {
+		if (redirectOn401(res)) return new Promise(() => {}); // navigation takes over
 		let detail = `${res.status} ${res.statusText}`;
 		try {
 			const data = await res.json();
@@ -44,6 +59,7 @@ async function postFile(path, file) {
 	body.append('file', file);
 	const res = await fetch(`/api${path}`, { method: 'POST', body });
 	if (!res.ok) {
+		if (redirectOn401(res)) return new Promise(() => {}); // navigation takes over
 		let detail = `${res.status} ${res.statusText}`;
 		try {
 			const data = await res.json();
@@ -157,4 +173,21 @@ export function updateRecipe(id, markdown) {
 /** @param {string} id */
 export function deleteRecipe(id) {
 	return send('DELETE', `/recipes/${encodeURIComponent(id)}`);
+}
+
+/**
+ * Session probe (Phase 4α). `auth_enabled: false` means local/dev mode.
+ * @returns {Promise<{ auth_enabled: boolean, authenticated: boolean }>}
+ */
+export function authStatus() {
+	return get('/auth/me');
+}
+
+/** @param {string} password */
+export function login(password) {
+	return send('POST', '/auth/login', { password });
+}
+
+export function logout() {
+	return send('POST', '/auth/logout');
 }
