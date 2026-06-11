@@ -43,6 +43,12 @@ class SocialImportRequest(BaseModel):
     text: str
 
 
+class LoginRequest(BaseModel):
+    """Request body for the single-user login (Phase 4α)."""
+
+    password: str
+
+
 class ImportDraft(BaseModel):
     """An unsaved draft returned by an importer — markdown for the §C editor."""
 
