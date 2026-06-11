@@ -18,7 +18,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from recipe_parser import parse_recipe_text
-from sqlalchemy import String, Text, create_engine, or_, select
+from sqlalchemy import String, Text, create_engine, event, or_, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 
 from _app.storage import Provenance, RecipeStore, StoredRecipe, normalize_tags
@@ -75,6 +75,17 @@ class SQLiteRecipeStore(RecipeStore):
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.engine = create_engine(f"sqlite:///{self.db_path}")
+        if os.environ.get("RCM_SQLITE_NFS"):
+            # Hosted deploy (4α): the PVC is NFS-backed. WAL's shm/mmap doesn't
+            # behave on NFS, so force the rollback journal + full fsync. Safe with
+            # the deployment's single-writer guarantee (1 replica, Recreate).
+            @event.listens_for(self.engine, "connect")
+            def _nfs_pragmas(dbapi_conn, _record):
+                cur = dbapi_conn.cursor()
+                cur.execute("PRAGMA journal_mode=TRUNCATE")
+                cur.execute("PRAGMA synchronous=FULL")
+                cur.close()
+
         Base.metadata.create_all(self.engine)
 
     # -- writes ------------------------------------------------------------

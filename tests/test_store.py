@@ -121,3 +121,22 @@ def test_persists_across_store_instances(tmp_path):
     rid = SQLiteRecipeStore(db_path=db).create(CAKE_MD, source=Provenance.HAND).id
     # a fresh store object on the same file sees the data
     assert SQLiteRecipeStore(db_path=db).get(rid) is not None
+
+
+def test_nfs_pragmas_applied_when_env_set(tmp_path, monkeypatch):
+    """RCM_SQLITE_NFS=1 (the hosted 4α deploy) forces NFS-safe journal settings."""
+    from sqlalchemy import text
+
+    monkeypatch.setenv("RCM_SQLITE_NFS", "1")
+    store = SQLiteRecipeStore(db_path=tmp_path / "nfs.db")
+    with store.engine.connect() as conn:
+        assert conn.execute(text("PRAGMA journal_mode")).scalar() == "truncate"
+        assert conn.execute(text("PRAGMA synchronous")).scalar() == 2  # FULL
+
+
+def test_default_journal_mode_unchanged_without_env(tmp_path):
+    from sqlalchemy import text
+
+    store = SQLiteRecipeStore(db_path=tmp_path / "plain.db")
+    with store.engine.connect() as conn:
+        assert conn.execute(text("PRAGMA journal_mode")).scalar() == "delete"

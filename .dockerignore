@@ -1,0 +1,34 @@
+# Dev/build cruft — keep the runtime image lean.
+.git
+.github
+.venv
+venv
+__pycache__
+**/__pycache__
+*.py[cod]
+.pytest_cache
+.ruff_cache
+
+# Frontend: sources are needed by the web build stage; exclude only generated
+# trees (the runtime gets _web/build via COPY --from=web).
+_web/node_modules
+_web/build
+_web/.svelte-kit
+
+# Local state — never bake into the image.
+_app/var
+_media
+*.db
+*.sqlite3
+
+# Tests + committed build artifacts the server doesn't serve.
+tests
+*.pdf
+
+# Local tooling / editor
+Makefile
+.dockerignore
+Dockerfile
+.DS_Store
+.vscode
+.idea
