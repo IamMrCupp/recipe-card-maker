@@ -13,11 +13,11 @@ import pytest
 from fastapi.testclient import TestClient
 from recipe_parser import parse_recipe_text
 
-from _app import web_import
+from _app import web_fetch, web_import
 from _app.extraction import ExtractionUnavailable
 from _app.main import create_app
 from _app.sqlite_store import SQLiteRecipeStore
-from _app.web_fetch import FetchError, UnsafeURL, _assert_safe, safe_get
+from _app.web_fetch import BlockedError, FetchError, UnsafeURL, _assert_safe, safe_get
 
 JSONLD_PAGE = """<html><head><script type="application/ld+json">
 {"@context":"https://schema.org","@type":"Recipe","name":"Test Lemon Loaf",
@@ -102,6 +102,50 @@ def test_safe_get_caps_redirect_chain():
         safe_get("https://93.184.216.34/start", _client=_mock_client(handler))
 
 
+# --- bot mitigation ---------------------------------------------------------
+
+
+def test_browser_headers_present_and_self_consistent():
+    # A lone spoofed UA changed nothing in testing; the client-hint + Sec-Fetch-*
+    # set is what moved sites. Guard the whole set, and keep the advertised Chrome
+    # version identical across the UA string and the client hint.
+    headers = web_fetch._BROWSER_HEADERS
+    for key in ("user-agent", "accept", "accept-language", "sec-ch-ua", "sec-fetch-mode"):
+        assert key in headers
+    assert f"Chrome/{web_fetch._CHROME_MAJOR}" in headers["user-agent"]
+    assert f'"{web_fetch._CHROME_MAJOR}"' in headers["sec-ch-ua"]
+    # brotli isn't installed; advertising `br` would yield undecodable bodies
+    assert "accept-encoding" not in headers
+
+
+@pytest.mark.parametrize("status", [401, 403, 429, 451])
+def test_safe_get_reports_refusal_as_blocked(status):
+    def handler(request):
+        return httpx.Response(status, text="<html>Access Denied</html>")
+
+    with pytest.raises(BlockedError, match="blocks automated imports"):
+        safe_get("https://93.184.216.34/r", _client=_mock_client(handler))
+
+
+def test_safe_get_flags_cloudflare_challenge_by_header():
+    # the Dotdash Meredith case: a JS challenge page marked by `cf-mitigated`
+    def handler(request):
+        return httpx.Response(403, headers={"cf-mitigated": "challenge"}, text="<html>js</html>")
+
+    with pytest.raises(BlockedError):
+        safe_get("https://93.184.216.34/r", _client=_mock_client(handler))
+
+
+def test_safe_get_leaves_404_as_an_ordinary_failure():
+    # a dead link must not be reported as bot-blocking — that misdirects the fix
+    def handler(request):
+        return httpx.Response(404, text="not found")
+
+    with pytest.raises(FetchError) as exc:
+        safe_get("https://93.184.216.34/r", _client=_mock_client(handler))
+    assert not isinstance(exc.value, BlockedError)
+
+
 # --- instruction-label cleanup (§D.2, from on-device ube-crinkles import) ----
 
 
@@ -129,6 +173,72 @@ def test_clean_instructions_keeps_real_terse_step():
 def test_clean_instructions_no_op_on_normal_steps():
     raw = ["Cream butter and sugar.", "Fold in flour and bake at 175C for 50 minutes."]
     assert web_import._clean_instructions(raw) == raw
+
+
+# --- keyword/tag normalization (§D.2) ---------------------------------------
+
+
+def test_normalize_keywords_splits_kingarthur_double_semicolons():
+    # the reported bug, verbatim from kingarthurbaking.com: recipe-scrapers splits
+    # `keywords` on commas only, so this arrived as ONE tag with `;;` inside it
+    raw = ["Layer cake;;Chocolate;;Vanilla;;Celebrations"]
+    assert web_import._normalize_keywords(raw) == [
+        "layer cake",
+        "chocolate",
+        "vanilla",
+        "celebrations",
+    ]
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        ["a;;b"],
+        ["a; b"],
+        ["a|b"],
+        ["a / b"],
+        ["a, b"],
+        ["a,b"],
+        "a;;b",  # a bare string, not a list
+    ],
+)
+def test_normalize_keywords_handles_each_separator(raw):
+    assert web_import._normalize_keywords(raw) == ["a", "b"]
+
+
+def test_normalize_keywords_drops_cms_metadata_pairs():
+    # delish/Hearst dumps internal CMS fields into keywords
+    raw = [
+        "contentId: 13efd1a8-d0cf-4a90-9120-16674375dd12",
+        "TOTALTIME: 00:45:00",
+        "sponsored: false",
+        "dinner",
+        "creamy chicken",
+    ]
+    assert web_import._normalize_keywords(raw) == ["dinner", "creamy chicken"]
+
+
+def test_normalize_keywords_dedupes_case_insensitively_keeping_order():
+    assert web_import._normalize_keywords(["Cake", "cake", "Bread"]) == ["cake", "bread"]
+
+
+def test_normalize_keywords_tolerates_absent_or_odd_input():
+    assert web_import._normalize_keywords(None) == []
+    assert web_import._normalize_keywords([]) == []
+    assert web_import._normalize_keywords(["", "  ", ";;"]) == []
+
+
+def test_normalized_tags_render_into_the_draft_frontmatter(monkeypatch):
+    # end-to-end: the `;;` never reaches the markdown the editor opens
+    page = JSONLD_PAGE.replace(
+        '"keywords":"lemon, quickbread"', '"keywords":"Layer cake;;Chocolate;;Vanilla"'
+    )
+    monkeypatch.setattr(web_import, "safe_get", lambda url: page)
+    markdown = web_import.import_website("https://example.com/r")
+
+    assert "tags: [layer cake, chocolate, vanilla]" in markdown
+    assert ";;" not in markdown
+    assert parse_recipe_text(markdown).meta["tags"] == ["layer cake", "chocolate", "vanilla"]
 
 
 # --- import logic -----------------------------------------------------------

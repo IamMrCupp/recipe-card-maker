@@ -14,6 +14,7 @@ structural parse finds nothing *and* the LLM is unavailable, we raise
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable
 
 from bs4 import BeautifulSoup
@@ -75,6 +76,42 @@ def _clean_instructions(steps: list[str]) -> list[str]:
     return out
 
 
+_TAG_SEPARATORS = re.compile(r"[;|/]+|,")
+
+
+def _normalize_keywords(raw: object) -> list[str]:
+    """Turn a scraper's `keywords` into clean corpus tags.
+
+    schema.org says `keywords` is a comma-separated string, so recipe-scrapers
+    splits on commas — but sites use whatever they like, and a non-comma separator
+    survives as ONE tag with the delimiter baked in. King Arthur Baking emits
+    `"Layer cake;;Chocolate;;Vanilla;;Celebrations"`, which reached the corpus as a
+    single `layer cake;;chocolate;;vanilla;;celebrations` tag. So we re-split on
+    the delimiters sites actually use, whatever the library already did.
+
+    We also drop `key: value` entries: Hearst sites (delish) dump CMS metadata into
+    keywords — `contentId: 13efd1a8-…`, `TOTALTIME: 00:45:00`, `sponsored: false`.
+    Those are never tags a person wants on a recipe card.
+
+    Lowercased and deduped, first spelling wins. The draft is editable, so erring
+    toward fewer, cleaner tags is the right side to err on."""
+    if isinstance(raw, str):
+        raw = [raw]
+    if not isinstance(raw, list):
+        return []
+
+    out: list[str] = []
+    seen: set[str] = set()
+    for entry in raw:
+        for piece in _TAG_SEPARATORS.split(str(entry)):
+            tag = piece.strip().lower()
+            if not tag or ":" in tag or tag in seen:
+                continue
+            seen.add(tag)
+            out.append(tag)
+    return out
+
+
 def _fmt_minutes(minutes: object) -> str | None:
     if not isinstance(minutes, int) or minutes <= 0:
         return None
@@ -90,11 +127,10 @@ def _draft_from_scraper(scraper) -> RecipeDraft:
     the folder taxonomy (cakes/cookies/...) — the user assigns the folder in the
     editor. Cuisine + keywords carry over; everything is best-effort."""
     cuisine = _try(scraper.cuisine)
-    keywords = _try(scraper.keywords)
     return RecipeDraft(
         title=_try(scraper.title) or None,
         cuisine=cuisine.lower() if isinstance(cuisine, str) else None,
-        tags=[k.lower() for k in keywords] if isinstance(keywords, list) else [],
+        tags=_normalize_keywords(_try(scraper.keywords)),
         active_time=_fmt_minutes(_try(scraper.prep_time)),
         total_time=_fmt_minutes(_try(scraper.total_time)),
         yield_amount=_try(scraper.yields) or None,
