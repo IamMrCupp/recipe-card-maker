@@ -128,6 +128,97 @@ def test_two_line_meta_does_not_collide_with_the_rule():
     )
 
 
+# --- columns ------------------------------------------------------------------
+
+
+def test_landscape_card_is_two_columns_and_portrait_is_one(recipe):
+    """A single 403pt column runs to ~130 characters a line and wastes most of
+    every line a short ingredient sits on; half of the 4x6's 259pt is too narrow
+    to carry a justified method step."""
+    assert (
+        len(cards._make_page_templates(recipe, LANDSCAPE, cards.LANDSCAPE_COLUMNS)[0].frames) == 2
+    )
+    assert len(cards._make_page_templates(recipe, PORTRAIT, cards.PORTRAIT_COLUMNS)[0].frames) == 1
+
+
+@pytest.mark.parametrize("columns", [1, 2, 3])
+def test_columns_tile_the_card_without_overlapping(recipe, page_size, columns):
+    for template in cards._make_page_templates(recipe, page_size, columns):
+        frames = template.frames
+        assert len(frames) == columns
+        assert frames[0]._x1 == pytest.approx(cards.PADS["left"])
+        right_edge = frames[-1]._x1 + frames[-1].width
+        assert right_edge == pytest.approx(page_size[0] - cards.PADS["right"])
+
+        for left, right in zip(frames, frames[1:], strict=False):
+            gap = right._x1 - (left._x1 + left.width)
+            assert gap == pytest.approx(cards.COLUMN_GUTTER), "columns overlap or drift"
+        assert len({round(f.width, 6) for f in frames}) == 1, "columns are uneven"
+        assert len({round(f._y1, 6) for f in frames}) == 1, "columns start at different heights"
+
+
+def test_page_fill_counts_every_column():
+    """Content ending in column 1 leaves column 2 empty. Measuring only the
+    active frame would read a full landscape card as a near-empty widow."""
+    recipe = parse_recipe(REPO_ROOT / "cakes" / "erdbeertorte.md")
+    render = cards._render_card(recipe, LANDSCAPE, cards.LANDSCAPE_COLUMNS)
+    assert render.last_page_fill > cards.MIN_LAST_PAGE_FILL
+    assert not render.has_widow
+
+
+# --- fitting a recipe onto one 6x4 card ---------------------------------------
+
+
+def test_landscape_fits_one_card_when_it_can(tmp_path):
+    """Sun and Moon is the corpus recipe that fits a single 6x4 card."""
+    recipe = parse_recipe(REPO_ROOT / "cookies" / "sun_and_moon.md")
+    render = cards.build_pdf(recipe, tmp_path / "card.pdf", landscape=True)
+    assert render.pages == 1
+    assert render.body_size >= cards.MIN_BODY_SIZE
+
+
+def test_fitting_never_prints_below_the_readable_floor(recipe, tmp_path):
+    """The bound that keeps this honest: a recipe too long for one card gets two
+    cards, not type nobody can cook from."""
+    render = cards.build_pdf(recipe, tmp_path / "card.pdf", landscape=True)
+    assert render.body_size >= cards.MIN_BODY_SIZE
+    assert render.body_size <= cards.BODY_SIZE
+
+
+def test_a_recipe_too_long_for_one_card_keeps_full_size(tmp_path):
+    """Aaron's case — 22 ingredients and 15 steps. It needs 4.5pt to reach a
+    single card, which is below the floor, so it stays full size across two."""
+    recipe = parse_recipe(FIXTURE)
+    assert cards._render_card(recipe, LANDSCAPE, cards.LANDSCAPE_COLUMNS).pages > 1
+
+    floor_scale = cards.MIN_BODY_SIZE / cards.BODY_SIZE
+    at_floor = cards._render_card(
+        recipe, LANDSCAPE, cards.LANDSCAPE_COLUMNS, font_scale=floor_scale
+    )
+    assert at_floor.pages > 1, "fixture now fits one card at the floor — retune this test"
+
+    render = cards.build_pdf(recipe, tmp_path / "card.pdf", landscape=True)
+    assert render.body_size == cards.BODY_SIZE, "type was shrunk for no gain"
+
+
+def test_fitting_takes_the_largest_size_that_works(tmp_path):
+    """Shrink no further than the job needs."""
+    recipe = parse_recipe(REPO_ROOT / "cookies" / "sun_and_moon.md")
+    render = cards.build_pdf(recipe, tmp_path / "card.pdf", landscape=True)
+
+    bigger = render.body_size / cards.BODY_SIZE + 0.02
+    assert (
+        cards._render_card(recipe, LANDSCAPE, cards.LANDSCAPE_COLUMNS, font_scale=bigger).pages > 1
+    ), "a larger size would also have fitted one card"
+
+
+def test_portrait_type_is_never_shrunk(recipe, tmp_path):
+    """The 4x6's two pages are the front and back of one card by design —
+    shrinking the type there would only buy a blank card back."""
+    render = cards.build_pdf(recipe, tmp_path / "card.pdf", landscape=False)
+    assert render.body_size == cards.BODY_SIZE
+
+
 # --- no card should end on a near-empty page ---------------------------------
 
 
@@ -142,36 +233,49 @@ def test_no_card_ends_on_a_widow_page(recipe, page_size, tmp_path):
 
 def test_trailing_step_no_longer_spills_onto_its_own_card():
     """The reported defect: the landscape card ran to three pages, the third
-    holding nothing but method step 15."""
+    holding nothing but method step 15. One wide column is what stranded it."""
     recipe = parse_recipe(FIXTURE)
-    unsqueezed = cards._render_card(recipe, LANDSCAPE, 1.0)
-    assert unsqueezed.pages == 3, "fixture no longer reproduces the widow"
-    assert unsqueezed.has_widow
+    one_column = cards._render_card(recipe, LANDSCAPE, 1)
+    assert one_column.pages == 3, "fixture no longer reproduces the widow"
+    assert one_column.has_widow
 
-    chosen = cards._render_card(recipe, LANDSCAPE, 0.97)
-    assert chosen.pages == 2
-    assert not chosen.has_widow
+    two_column = cards._render_card(recipe, LANDSCAPE, cards.LANDSCAPE_COLUMNS)
+    assert two_column.pages == 2
+    assert not two_column.has_widow
 
 
 def test_cards_without_a_widow_are_left_untouched(recipe, page_size, tmp_path):
-    """The squeeze is a last resort — a card that already flows well keeps its
-    full leading, so fixing one recipe can't quietly reflow the whole corpus."""
+    """Both the squeeze and the shrink are last resorts — a card that already
+    flows well keeps its full leading and its full type size, so fixing one
+    recipe can't quietly reflow the whole corpus."""
     landscape = page_size == LANDSCAPE
-    if cards._render_card(recipe, page_size, 1.0).has_widow:
-        pytest.skip("this recipe needs the squeeze")
+    columns = cards.LANDSCAPE_COLUMNS if landscape else cards.PORTRAIT_COLUMNS
+    plain = cards._render_card(recipe, page_size, columns)
+    if plain.has_widow or plain.pages == 1:
+        pytest.skip("this recipe needs the squeeze, or already fits one card")
     assert cards.build_pdf(recipe, tmp_path / "card.pdf", landscape=landscape).squeeze == 1.0
 
 
-def test_squeeze_keeps_font_sizes_and_only_tightens_leading():
-    tight = cards._squeezed_styles(0.9)
+def test_leading_squeeze_keeps_font_sizes(recipe):
+    """The squeeze that clears a widow must stay invisible: leading only."""
+    tight = cards._scaled_styles(1.0, 0.9)
     for name, base in cards.STYLES.items():
         assert tight[name].fontSize == base.fontSize, f"{name} font size changed"
         assert tight[name].leading == pytest.approx(base.leading * 0.9)
         assert tight[name].leading > tight[name].fontSize, f"{name} lines would touch"
 
 
+def test_font_scale_keeps_lines_from_touching():
+    """The shrink scales type and leading together, so lines never collide."""
+    for scale in (cards.MIN_BODY_SIZE / cards.BODY_SIZE, 0.9, 1.0):
+        scaled = cards._scaled_styles(scale)
+        for name, base in cards.STYLES.items():
+            assert scaled[name].fontSize == pytest.approx(base.fontSize * scale)
+            assert scaled[name].leading > scaled[name].fontSize, f"{name} lines would touch"
+
+
 def test_fixture_card_is_deterministic(tmp_path):
-    """The squeeze search must not make the output depend on build order."""
+    """The fit search must not make the output depend on build order."""
     recipe = parse_recipe(FIXTURE)
     a, b = tmp_path / "a.pdf", tmp_path / "b.pdf"
     cards.build_pdf(recipe, a, landscape=True)

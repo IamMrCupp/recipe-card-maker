@@ -148,20 +148,26 @@ def _meta_line(recipe: Recipe) -> str | None:
     return _strip_entities("  |  ".join(bits))
 
 
-def _squeezed_styles(factor: float) -> dict[str, ParagraphStyle]:
-    """`STYLES` with leading and inter-paragraph space scaled by `factor`.
+def _scaled_styles(font_scale: float, leading_squeeze: float = 1.0) -> dict[str, ParagraphStyle]:
+    """`STYLES` with the type scaled by `font_scale`, leading tightened on top of
+    that by `leading_squeeze`.
 
-    Font sizes are left alone — the card stays as readable as it was; only the
-    air between lines tightens. See `_render_card` for when this is reached for.
+    The two are separate knobs because they buy different things. Shrinking the
+    type is how a long recipe reaches a single card — visible, so it is bounded by
+    `MIN_BODY_SIZE`. Tightening leading alone leaves the card exactly as readable
+    as it was and is the invisible nudge that clears a widow page. See `_fit_card`.
     """
-    if factor == 1.0:
+    if font_scale == 1.0 and leading_squeeze == 1.0:
         return STYLES
     out = {}
     for name, base in STYLES.items():
-        style = ParagraphStyle(f"{base.name}-sq", parent=base)
-        style.leading = base.leading * factor
-        style.spaceBefore = base.spaceBefore * factor
-        style.spaceAfter = base.spaceAfter * factor
+        style = ParagraphStyle(f"{base.name}-s", parent=base)
+        style.fontSize = base.fontSize * font_scale
+        style.leading = base.leading * font_scale * leading_squeeze
+        style.spaceBefore = base.spaceBefore * font_scale * leading_squeeze
+        style.spaceAfter = base.spaceAfter * font_scale * leading_squeeze
+        style.leftIndent = base.leftIndent * font_scale
+        style.firstLineIndent = base.firstLineIndent * font_scale
         out[name] = style
     return out
 
@@ -231,6 +237,7 @@ SUBTITLE_SIZE = 9
 META_SIZE = 8.5
 LINE_SPACING = 1.2  # leading as a multiple of font size
 BLOCK_GAP = 3.0  # title -> subtitle/meta, so they read as separate blocks
+COLUMN_GUTTER = 10.0  # between body columns, where there is more than one
 RULE_GAP = 4.0  # last header line -> rule
 FRAME_GAP = 4.0  # rule -> top of the body frame
 
@@ -362,27 +369,39 @@ def _draw_header(canvas, lines: list[HeaderLine], page_size: tuple[float, float]
 # --- Page templates ----------------------------------------------------------
 
 
-def _make_page_templates(recipe: Recipe, page_size: tuple[float, float] = CARD_SIZE):
+def _make_page_templates(
+    recipe: Recipe, page_size: tuple[float, float] = CARD_SIZE, columns: int = 1
+):
     """Two templates: 'first' has the full title header, 'cont' has a small one.
 
     `page_size` is the card dimensions — (4x6) portrait by default, (6x4) for the
     landscape variant. All frame/header geometry derives from it, so the same code
-    lays out either orientation."""
-    usable_width = page_size[0] - PADS["left"] - PADS["right"]
+    lays out either orientation.
 
-    def body_frame(lines: list[HeaderLine], frame_id: str) -> Frame:
-        return Frame(
-            PADS["left"],
-            PADS["bottom"],
-            usable_width,
-            page_size[1] - PADS["top"] - PADS["bottom"] - header_height(lines),
-            leftPadding=0,
-            rightPadding=0,
-            topPadding=0,
-            bottomPadding=0,
-            id=frame_id,
-            showBoundary=0,
-        )
+    `columns` splits the body into side-by-side frames that content flows through
+    in order. The 6x4 card uses two: a single 403pt column runs to ~130 characters
+    a line, and a list of short ingredients wastes most of every line it sits on.
+    """
+    usable_width = page_size[0] - PADS["left"] - PADS["right"]
+    column_width = (usable_width - COLUMN_GUTTER * (columns - 1)) / columns
+
+    def body_frames(lines: list[HeaderLine], tag: str) -> list[Frame]:
+        height = page_size[1] - PADS["top"] - PADS["bottom"] - header_height(lines)
+        return [
+            Frame(
+                PADS["left"] + i * (column_width + COLUMN_GUTTER),
+                PADS["bottom"],
+                column_width,
+                height,
+                leftPadding=0,
+                rightPadding=0,
+                topPadding=0,
+                bottomPadding=0,
+                id=f"{tag}{i}",
+                showBoundary=0,
+            )
+            for i in range(columns)
+        ]
 
     first_lines = header_lines(recipe, usable_width, continued=False)
     cont_lines = header_lines(recipe, usable_width, continued=True)
@@ -396,13 +415,13 @@ def _make_page_templates(recipe: Recipe, page_size: tuple[float, float] = CARD_S
     return [
         PageTemplate(
             id="first",
-            frames=[body_frame(first_lines, "first_body")],
+            frames=body_frames(first_lines, "first_body"),
             onPage=draw_first_header,
             pagesize=page_size,
         ),
         PageTemplate(
             id="cont",
-            frames=[body_frame(cont_lines, "cont_body")],
+            frames=body_frames(cont_lines, "cont_body"),
             onPage=draw_cont_header,
             pagesize=page_size,
         ),
@@ -421,28 +440,50 @@ def _subtitle_from_meta(meta: dict) -> str | None:
 
 
 # --- Build ------------------------------------------------------------------
+#
+# A 6x4 card is meant to be pulled out of the tin and cooked from, so the layout
+# is chosen in this order:
+#   1. one card at full size,
+#   2. one card with the type shrunk, but never below MIN_BODY_SIZE,
+#   3. full size, with leading tightened just enough that the last card isn't a
+#      near-empty widow.
+# Step 2 is bounded on purpose. Every recipe in the corpus *could* be squeezed
+# onto a single card by going small enough; most of them only at sizes nobody
+# wants to cook from. Where the floor is reached, two cards is the honest answer.
 
-# A card whose last page carries almost nothing is a widow: the reader gets an
-# extra card out of the printer for one trailing step. When that happens the body
-# is re-flowed with slightly tighter leading (font sizes untouched) and the first
-# attempt that clears the widow — or that at least costs fewer cards — wins.
-SQUEEZE_STEPS = (1.0, 0.97, 0.94, 0.91)
+BODY_SIZE = STYLES["body"].fontSize
+MIN_BODY_SIZE = 5.0  # the smallest body type worth printing; full size is 6pt
+FIT_STEPS = (0.98, 0.96, 0.94, 0.92, 0.90, 0.88, 0.86, 0.84)
+SQUEEZE_STEPS = (0.97, 0.94, 0.91)
 MIN_LAST_PAGE_FILL = 0.15
+
+# The 6x4 card reads as two columns; the 4x6 is too narrow to split (half of 259pt
+# leaves ~40 characters a line, which justified method steps can't carry).
+LANDSCAPE_COLUMNS = 2
+PORTRAIT_COLUMNS = 1
 
 
 class CardRender(NamedTuple):
     data: bytes
     pages: int
-    last_page_fill: float  # 0..1 — how much of the final card's frame is used
-    squeeze: float
+    last_page_fill: float  # 0..1 — how much of the final card's columns are used
+    body_size: float  # the body type size this layout settled on
+    squeeze: float  # leading tightening applied on top of that
 
     @property
     def has_widow(self) -> bool:
         return self.pages > 1 and self.last_page_fill < MIN_LAST_PAGE_FILL
 
 
-def _render_card(recipe: Recipe, page_size: tuple[float, float], squeeze: float) -> CardRender:
-    """Lay the card out once at a given leading squeeze and report how it filled."""
+def _render_card(
+    recipe: Recipe,
+    page_size: tuple[float, float],
+    columns: int,
+    *,
+    font_scale: float = 1.0,
+    leading_squeeze: float = 1.0,
+) -> CardRender:
+    """Lay the card out once at a given size and report how it filled."""
     buf = io.BytesIO()
     doc = BaseDocTemplate(
         buf,
@@ -458,27 +499,76 @@ def _render_card(recipe: Recipe, page_size: tuple[float, float], squeeze: float)
     fill: dict[int, float] = {}
 
     def record(canvas, doc_):
-        frame = doc_.frame
-        used = frame._aH - (frame._y - frame._y1)
-        fill[doc_.page] = used / frame._aH if frame._aH else 1.0
+        # Every frame of the page, not just the one that happened to be active:
+        # on a two-column card, content ending in column 1 leaves column 2 empty,
+        # and measuring only the active frame would call a full page a widow.
+        frames = doc_.pageTemplate.frames
+        used = sum(f._aH - (f._y - f._y1) for f in frames)
+        available = sum(f._aH for f in frames)
+        fill[doc_.page] = used / available if available else 1.0
 
-    templates = _make_page_templates(recipe, page_size)
+    templates = _make_page_templates(recipe, page_size, columns)
     for template in templates:
         template.onPageEnd = record
     doc.addPageTemplates(templates)
 
-    styles = _squeezed_styles(squeeze)
+    styles = _scaled_styles(font_scale, leading_squeeze)
     story: list = [NextPageTemplate("cont")]
     for section in recipe.sections:
         story.extend(_render_section_flow(section, styles))
 
     note = recipe.meta.get("notes")
     if note:
-        story.append(Spacer(1, 6 * squeeze))
+        story.append(Spacer(1, 6 * font_scale * leading_squeeze))
         story.append(Paragraph(f"<i>{md_inline(note)}</i>", styles["note"]))
 
     doc.build(story)
-    return CardRender(buf.getvalue(), doc.page, fill.get(doc.page, 1.0), squeeze)
+    return CardRender(
+        buf.getvalue(),
+        doc.page,
+        fill.get(doc.page, 1.0),
+        BODY_SIZE * font_scale,
+        leading_squeeze,
+    )
+
+
+def _fit_card(
+    recipe: Recipe,
+    page_size: tuple[float, float],
+    columns: int,
+    *,
+    fit_single_card: bool = False,
+) -> CardRender:
+    """Pick the layout, by the order of preference described above.
+
+    `fit_single_card` enables the shrink-to-one-page step. It is on for the 6x4
+    card, which is meant to be cooked from directly, and off for the 4x6, whose
+    two pages are the front and back of one card by design — shrinking the type
+    there would buy a blank card back.
+    """
+    full = _render_card(recipe, page_size, columns)
+    if full.pages == 1:
+        return full
+
+    if fit_single_card:
+        for font_scale in FIT_STEPS:
+            if BODY_SIZE * font_scale < MIN_BODY_SIZE:
+                break
+            shrunk = _render_card(recipe, page_size, columns, font_scale=font_scale)
+            if shrunk.pages == 1:
+                return shrunk
+
+    if not full.has_widow:
+        return full  # more than one card, but it breaks cleanly — leave it alone
+
+    best = full  # the untouched layout, kept as the fallback
+    for squeeze in SQUEEZE_STEPS:
+        render = _render_card(recipe, page_size, columns, leading_squeeze=squeeze)
+        if not render.has_widow:
+            return render
+        if render.pages < best.pages:
+            best = render
+    return best
 
 
 def build_pdf(recipe: Recipe, out_path: Path, *, landscape: bool = False) -> CardRender:
@@ -486,24 +576,16 @@ def build_pdf(recipe: Recipe, out_path: Path, *, landscape: bool = False) -> Car
     `_4x6.pdf`); `landscape=True` produces a 6x4 card (long edge horizontal).
 
     Returns the layout that was written — page count, how full the last card is,
-    and the squeeze it took to get there. Callers are free to ignore it; the tests
-    assert on it rather than re-deriving the geometry from the PDF bytes.
+    the body size it settled on and any leading squeeze. Callers are free to
+    ignore it; the tests assert on it rather than re-deriving the geometry from
+    the PDF bytes.
     """
     ensure_reproducible_pdf_dates()
     page_size = (CARD_SIZE[1], CARD_SIZE[0]) if landscape else CARD_SIZE
+    columns = LANDSCAPE_COLUMNS if landscape else PORTRAIT_COLUMNS
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
-    best: CardRender | None = None
-    for squeeze in SQUEEZE_STEPS:
-        render = _render_card(recipe, page_size, squeeze)
-        if best is None:
-            best = render  # the untouched layout, kept as the fallback
-        if not render.has_widow:
-            best = render
-            break
-        if render.pages < best.pages:
-            best = render
-
+    best = _fit_card(recipe, page_size, columns, fit_single_card=landscape)
     out_path.write_bytes(best.data)
     return best
 
