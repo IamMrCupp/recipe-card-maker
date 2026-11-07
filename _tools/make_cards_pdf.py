@@ -452,8 +452,11 @@ def _subtitle_from_meta(meta: dict) -> str | None:
 # wants to cook from. Where the floor is reached, two cards is the honest answer.
 
 BODY_SIZE = STYLES["body"].fontSize
-MIN_BODY_SIZE = 5.0  # the smallest body type worth printing; full size is 6pt
-FIT_STEPS = (0.98, 0.96, 0.94, 0.92, 0.90, 0.88, 0.86, 0.84)
+# The smallest body type worth printing; full size is 6pt. Set to 4.5 by Aaron
+# after looking at a printed sample — it is what a 22-ingredient, 15-step recipe
+# costs to reach one card. Raise it if cards start coming out unreadable.
+MIN_BODY_SIZE = 4.5
+FIT_STEPS = (0.98, 0.96, 0.94, 0.92, 0.90, 0.88, 0.86, 0.84, 0.82, 0.80, 0.78, 0.76, 0.75)
 SQUEEZE_STEPS = (0.97, 0.94, 0.91)
 MIN_LAST_PAGE_FILL = 0.15
 

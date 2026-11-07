@@ -186,19 +186,31 @@ def test_fitting_never_prints_below_the_readable_floor(recipe, tmp_path):
 
 
 def test_a_recipe_too_long_for_one_card_keeps_full_size(tmp_path):
-    """Aaron's case — 22 ingredients and 15 steps. It needs 4.5pt to reach a
-    single card, which is below the floor, so it stays full size across two."""
-    recipe = parse_recipe(FIXTURE)
+    """Erdbeertorte needs 3.6pt to reach a single card — well under the floor —
+    so it keeps full size across two rather than shrinking for no gain.
+
+    This is the case that proves the floor still bites. If the corpus ever grows
+    a longer recipe, point this at that one instead."""
+    recipe = parse_recipe(REPO_ROOT / "cakes" / "erdbeertorte.md")
     assert cards._render_card(recipe, LANDSCAPE, cards.LANDSCAPE_COLUMNS).pages > 1
 
     floor_scale = cards.MIN_BODY_SIZE / cards.BODY_SIZE
     at_floor = cards._render_card(
         recipe, LANDSCAPE, cards.LANDSCAPE_COLUMNS, font_scale=floor_scale
     )
-    assert at_floor.pages > 1, "fixture now fits one card at the floor — retune this test"
+    assert at_floor.pages > 1, "this recipe now fits one card at the floor — retune this test"
 
     render = cards.build_pdf(recipe, tmp_path / "card.pdf", landscape=True)
     assert render.body_size == cards.BODY_SIZE, "type was shrunk for no gain"
+
+
+def test_aarons_recipe_fits_one_card_at_the_floor(tmp_path):
+    """The case that set the floor: 22 ingredients and 15 steps onto one 6x4."""
+    recipe = parse_recipe(FIXTURE)
+    render = cards.build_pdf(recipe, tmp_path / "card.pdf", landscape=True)
+    assert render.pages == 1
+    assert render.body_size >= cards.MIN_BODY_SIZE
+    assert render.body_size < cards.BODY_SIZE, "it needs shrinking to get there"
 
 
 def test_fitting_takes_the_largest_size_that_works(tmp_path):
